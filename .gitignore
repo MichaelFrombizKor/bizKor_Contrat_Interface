@@ -1,0 +1,26 @@
+# Fichiers système macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Fichiers de cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Archives générées
+*.zip
+
+# Node (si jamais on ajoute des dépendances plus tard)
+node_modules/

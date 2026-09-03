@@ -1,0 +1,18 @@
+{
+  "name": "adlucem-interface-contract",
+  "version": "1.0.0",
+  "description": "Application web de gestion du contrat d'interfaces Salesforce ↔ Codial — ADLUCEM / bizKor",
+  "keywords": ["salesforce", "codial", "integration", "contrat-interfaces", "bizkor", "adlucem"],
+  "author": "bizKor <contact@bizkor.fr>",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 4321",
+    "open": "python3 -m http.server 4321 & sleep 1 && open http://localhost:4321",
+    "serve": "python3 -m http.server 4321",
+    "pack": "zip -r ../adlucem-interface-contract-$(date +%Y%m%d).zip . --exclude '*.DS_Store' --exclude '__pycache__/*' --exclude '.git/*'"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
