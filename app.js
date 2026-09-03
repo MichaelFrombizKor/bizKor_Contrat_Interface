@@ -1,4 +1,4 @@
-// Application de gestion du Contrat d'Interface Salesforce <-> Codial (Google Light Style)
+// Application de gestion du Contrat d'Interface Salesforce <->  (Google Light Style)
 
 // Clé de stockage : supporte l'isolation par onglet via ?contractKey=...
 const _urlKey = new URLSearchParams(window.location.search).get("contractKey");
@@ -151,10 +151,10 @@ function setupRichTextToolbar() {
 // ==============================================================================
 // GESTIONNAIRE D'ADMINISTRATION DES PICKLISTS (RÉFÉRENTIELS)
 // ==============================================================================
-const STORAGE_KEY_PICKLISTS = "adlucem_picklists_admin_v2";
-const STORAGE_KEY_COLORS   = "adlucem_picklists_colors_v1";
+const STORAGE_KEY_PICKLISTS = "_picklists_admin_v2";
+const STORAGE_KEY_COLORS   = "_picklists_colors_v1";
 
-// Charge la map de couleurs { "flux::Salesforce => Codial": "#4285F4", ... }
+// Charge la map de couleurs { "flux::Salesforce => ": "#4285F4", ... }
 function getPicklistColors() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_COLORS);
@@ -211,7 +211,7 @@ function getDefaultPicklists() {
     : ["Comptes", "Contacts", "Devis / Commandes", "Projets"];
 
   return {
-    flux: ["Salesforce => Codial", "Codial => Salesforce"],
+    flux: ["Salesforce => ", " => Salesforce"],
     objet: defaultObjets,
     synchro: ["Création", "Modification", "Création/Modification"],
     cible: ["Champ existant", "Champ à créer", "Champ à modifier"],
@@ -277,7 +277,7 @@ function switchAdminTab(tabName) {
   if (inputNew) {
     inputNew.value = "";
     const placeholders = {
-      flux: "Ex: Bidirectionnel, Salesforce <=> Codial...",
+      flux: "Ex: Bidirectionnel, Salesforce <=> ...",
       objet: "Ex: Factures, Affaires, Lignes de commande...",
       synchro: "Ex: Temps réel, Différé, Nocturne...",
       cible: "Ex: Champ facultatif, Champ système...",
@@ -786,11 +786,11 @@ function setupEventListeners() {
   document.getElementById("stat-creer")?.addEventListener("click", () => {
     setFilterVal("filter-cible", "Champ à créer");
   });
-  document.getElementById("stat-sf-codial")?.addEventListener("click", () => {
-    setFilterVal("filter-flux", "Salesforce => Codial");
+  document.getElementById("stat-sf-")?.addEventListener("click", () => {
+    setFilterVal("filter-flux", "Salesforce => ");
   });
-  document.getElementById("stat-codial-sf")?.addEventListener("click", () => {
-    setFilterVal("filter-flux", "Codial => Salesforce");
+  document.getElementById("stat--sf")?.addEventListener("click", () => {
+    setFilterVal("filter-flux", " => Salesforce");
   });
 }
 
@@ -884,15 +884,15 @@ function updateKPIs() {
   const oui = contractItems.filter(i => (i.aInterfacer || "").includes("Oui")).length;
   const non = contractItems.filter(i => (i.aInterfacer || "").includes("Non")).length;
   const aCreer = contractItems.filter(i => (i.cibleExistante || "").includes("créer")).length;
-  const sfCodial = contractItems.filter(i => (i.sensFlux || "").includes("Salesforce => Codial")).length;
-  const codialSf = contractItems.filter(i => (i.sensFlux || "").includes("Codial => Salesforce")).length;
+  const sf = contractItems.filter(i => (i.sensFlux || "").includes("Salesforce => ")).length;
+  const Sf = contractItems.filter(i => (i.sensFlux || "").includes(" => Salesforce")).length;
 
   document.getElementById("stat-val-total").textContent = total;
   document.getElementById("stat-val-oui").textContent = oui;
   document.getElementById("stat-val-non").textContent = non;
   document.getElementById("stat-val-creer").textContent = aCreer;
-  document.getElementById("stat-val-sf").textContent = sfCodial;
-  document.getElementById("stat-val-codial").textContent = codialSf;
+  document.getElementById("stat-val-sf").textContent = sf;
+  document.getElementById("stat-val-").textContent = Sf;
   document.getElementById("total-count").textContent = total;
 }
 
@@ -931,16 +931,16 @@ function renderTable(items) {
   
   tbody.innerHTML = items.map(item => {
     const isOui = (item.aInterfacer || "").includes("Oui");
-    const isSfCodial = (item.sensFlux || "").includes("Salesforce => Codial");
-    const isCodialSf = (item.sensFlux || "").includes("Codial => Salesforce");
+    const isSf = (item.sensFlux || "").includes("Salesforce => ");
+    const isSf = (item.sensFlux || "").includes(" => Salesforce");
 
     let fluxBadgeClass = "badge-flux-autre";
-    if (isSfCodial) fluxBadgeClass = "badge-flux-sf-codial";
-    else if (isCodialSf) fluxBadgeClass = "badge-flux-codial-sf";
+    if (isSf) fluxBadgeClass = "badge-flux-sf-";
+    else if (isSf) fluxBadgeClass = "badge-flux--sf";
 
     let fluxDisplay = item.sensFlux || "";
-    if (fluxDisplay === "Salesforce => Codial") fluxDisplay = "Salesforce ➔ Codial";
-    else if (fluxDisplay === "Codial => Salesforce") fluxDisplay = "Codial ➔ Salesforce";
+    if (fluxDisplay === "Salesforce => ") fluxDisplay = "Salesforce ➔ ";
+    else if (fluxDisplay === " => Salesforce") fluxDisplay = " ➔ Salesforce";
     
     let cibleBadgeClass = "badge-existant";
     if ((item.cibleExistante || "").includes("créer")) cibleBadgeClass = "badge-creer";
@@ -1011,16 +1011,16 @@ function renderCards(items) {
 
   container.innerHTML = items.map(item => {
     const isOui = (item.aInterfacer || "").includes("Oui");
-    const isSfCodial = (item.sensFlux || "").includes("Salesforce => Codial");
-    const isCodialSf = (item.sensFlux || "").includes("Codial => Salesforce");
+    const isSf = (item.sensFlux || "").includes("Salesforce => ");
+    const isSf = (item.sensFlux || "").includes(" => Salesforce");
 
     let fluxBadgeClass = "badge-flux-autre";
-    if (isSfCodial) fluxBadgeClass = "badge-flux-sf-codial";
-    else if (isCodialSf) fluxBadgeClass = "badge-flux-codial-sf";
+    if (isSf) fluxBadgeClass = "badge-flux-sf-";
+    else if (isSf) fluxBadgeClass = "badge-flux--sf";
 
     let fluxDisplay = item.sensFlux || "";
-    if (fluxDisplay === "Salesforce => Codial") fluxDisplay = "SF ➔ Codial";
-    else if (fluxDisplay === "Codial => Salesforce") fluxDisplay = "Codial ➔ SF";
+    if (fluxDisplay === "Salesforce => ") fluxDisplay = "SF ➔ ";
+    else if (fluxDisplay === " => Salesforce") fluxDisplay = " ➔ SF";
 
     return `
       <div class="contract-card">
@@ -1169,7 +1169,7 @@ function openModal(id = null) {
     document.getElementById("edit-id").value = "";
     document.getElementById("edit-champ").value = "";
     document.getElementById("edit-objet").value = currentFilter.objet || "";
-    document.getElementById("edit-flux").value = currentFilter.flux || "Salesforce => Codial";
+    document.getElementById("edit-flux").value = currentFilter.flux || "Salesforce => ";
     document.getElementById("edit-api-source").value = "";
     document.getElementById("edit-datatype").value = "Text";
     document.getElementById("edit-required").checked = false;
@@ -1439,7 +1439,7 @@ function exportToExcel() {
 
   XLSX.utils.book_append_sheet(wb, wsContract, "Contrat d'Interfaces");
 
-  // Nom du fichier sans mention Codial
+  // Nom du fichier sans mention 
   const clientClean = (projectMetadata.client || "Client").replace(/[^a-zA-Z0-9]/g, "_");
   const projetClean = (projectMetadata.projet || "Contrat_Interfaces").replace(/[^a-zA-Z0-9]/g, "_");
   const dateClean = (projectMetadata.date || new Date().toISOString().slice(0, 10)).replace(/[^a-zA-Z0-9]/g, "");
@@ -1449,7 +1449,7 @@ function exportToExcel() {
   showToast(`Classeur Excel exporté (${itemsToExport.length} lignes) !`, "success");
 }
 
-// Export CSV complet avec métadonnées d'en-tête (sans mention Codial)
+// Export CSV complet avec métadonnées d'en-tête (sans mention )
 function exportToCSV() {
   const headers = [
     "Sens du flux",
