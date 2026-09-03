@@ -2,21 +2,20 @@
 
 // Clé de stockage : supporte l'isolation par onglet via ?contractKey=...
 const _urlKey = new URLSearchParams(window.location.search).get("contractKey");
-const STORAGE_KEY_DATA = _urlKey ? _urlKey + "_data" : "adlucem_contract_data_v2";
-const STORAGE_KEY_META = _urlKey ? _urlKey + "_meta" : "adlucem_contract_metadata_v2";
-const IS_NEW_CONTRACT = !!_urlKey; // Indique si c'est un contrat vierge
+const STORAGE_KEY_DATA = _urlKey ? _urlKey + "_data" : "bizkor_contract_data";
+const STORAGE_KEY_META = _urlKey ? _urlKey + "_meta" : "bizkor_contract_meta";
 
 // Données de mapping
 let contractItems = [];
 
-// Métadonnées du projet
+// Métadonnées du projet (toujours vierges au démarrage)
 let projectMetadata = {
-  client: IS_NEW_CONTRACT ? "" : "ADLUCEM",
-  projet: IS_NEW_CONTRACT ? "" : "Intégration Codial",
-  date: IS_NEW_CONTRACT ? "" : "2026-09-03",
-  cdpClient: IS_NEW_CONTRACT ? "" : "Orane LABROSSE",
-  cdpBizkor: IS_NEW_CONTRACT ? "" : "Michael MARCELINO",
-  commentaires: IS_NEW_CONTRACT ? "" : "*Prospect vs Client : notion OK dans Salesforce comme dans Codial. Salesforce gère le prospect et envoie l'information à Codial (création du prospect, 1er devis validé). Au 1er devis validé, le prospect devient un client.<br><br>Fiches clients : Les informations circulent de Salesforce vers Codial ainsi que de Codial vers Salesforce (bidirectionnel)<br>⚠️ Cas particulier : Codial doit verrouiller les informations de facturation (contact, TVA intracommunautaire, CGV signée, mode de paiement, etc.) qui ne doivent pas être modifiées dans Salesforce par la force commerciale.<br>Ces informations « de facturation » doivent être gérées uniquement par le service comptable AdLucem, en aucun cas par le service commercial.<br><br>Suivi des Projets et Affaires Salesforce dans Codial : Les ADV doivent pouvoir affecter un projet ou un affaire Salesforce à leurs devis et commandes Codial. Pour cela, la liste des projets et des affaires Salesforce peut remonter dans les projets et/ou sous-projet Codial.<br>Il faudra déterminer à l'usage le fonctionnement le plus adapté :<br>Projet Salesforce = Projet Codial<br>Affaire Salesforce = Projet Codial<br>Ou Projet Salesforce = Projet Codial ET Affaire Salesforce = Sous-projet Codial => RETENU POUR PLUS DE COHERENCE<br><br>Fréquence de mise à jour entre Salesforce et Codial : 1 fois par 24 h sauf pour certaines informations 1 fois par heure (par exemple pour l'information « devis validé » dans Salesforce qui doit remonter rapidement dans Codial).<br><br>ETL : 1 répertoire de transit avec 2 espaces<br>1 espace pour stocker les fichiers : 1 FTP sur le serveur qui sera mis en place par LD SYSTEME<br>1 espace où l'on vient picorer l'information et la consolider dans les logiciels<br>La solution du logiciel sur le serveur n'est pas retenue car aucun des interlocuteurs ne sait faire la maintenance<br>La solution de l'abonnement SAS sur le web est retenue et elle sera géré par Salesforce via un abonnement annuel*"
+  client: "",
+  projet: "",
+  date: new Date().toISOString().slice(0, 10),
+  cdpClient: "",
+  cdpBizkor: "",
+  commentaires: ""
 };
 
 let currentFilter = {
@@ -88,11 +87,11 @@ function loadData() {
       contractItems = JSON.parse(saved);
     } catch (e) {
       console.error("Erreur lors de la lecture du localStorage", e);
-      contractItems = IS_NEW_CONTRACT ? [] : (Array.isArray(defaultContractData) ? [...defaultContractData] : []);
+      contractItems = [];
     }
   } else {
-    // Nouveau contrat vierge = liste vide, contrat existant = données CSV par défaut
-    contractItems = IS_NEW_CONTRACT ? [] : (Array.isArray(defaultContractData) ? [...defaultContractData] : []);
+    // Toujours démarrer avec un contrat vierge
+    contractItems = [];
     saveData();
   }
 }
