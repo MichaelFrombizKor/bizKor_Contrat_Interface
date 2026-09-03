@@ -733,16 +733,23 @@ function setupEventListeners() {
     });
   });
 
-  // Boutons du haut
-  document.getElementById("btn-export").addEventListener("click", exportToCSV);
-  document.getElementById("btn-add-row").addEventListener("click", () => openModal());
+  // Bouton Nouveau champ
+  const btnAddRow = document.getElementById("btn-add-row");
+  if (btnAddRow) btnAddRow.onclick = () => openModal();
 
   // Modal
-  document.getElementById("modal-close").addEventListener("click", closeModal);
-  document.getElementById("btn-cancel").addEventListener("click", closeModal);
-  document.getElementById("modal-overlay").addEventListener("click", (e) => {
-    if (e.target.id === "modal-overlay") closeModal();
-  });
+  const modalClose = document.getElementById("modal-close");
+  if (modalClose) modalClose.onclick = closeModal;
+
+  const btnCancel = document.getElementById("btn-cancel");
+  if (btnCancel) btnCancel.onclick = closeModal;
+
+  const modalOverlay = document.getElementById("modal-overlay");
+  if (modalOverlay) {
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target.id === "modal-overlay") closeModal();
+    });
+  }
 
   // Modal Admin
   const adminOverlay = document.getElementById("modal-admin-overlay");
@@ -762,24 +769,27 @@ function setupEventListeners() {
     });
   }
 
-  document.getElementById("btn-save").addEventListener("click", saveItemFromModal);
-  document.getElementById("btn-delete").addEventListener("click", deleteItemFromModal);
+  const btnSave = document.getElementById("btn-save");
+  if (btnSave) btnSave.onclick = saveItemFromModal;
+
+  const btnDelete = document.getElementById("btn-delete");
+  if (btnDelete) btnDelete.onclick = deleteItemFromModal;
 
   // Clic sur les KPIs pour filtrer rapidement
-  document.getElementById("stat-total").addEventListener("click", () => resetFilters());
-  document.getElementById("stat-oui").addEventListener("click", () => {
+  document.getElementById("stat-total")?.addEventListener("click", () => resetFilters());
+  document.getElementById("stat-oui")?.addEventListener("click", () => {
     setFilterVal("filter-interfacer", "oui");
   });
-  document.getElementById("stat-non").addEventListener("click", () => {
+  document.getElementById("stat-non")?.addEventListener("click", () => {
     setFilterVal("filter-interfacer", "non");
   });
-  document.getElementById("stat-creer").addEventListener("click", () => {
+  document.getElementById("stat-creer")?.addEventListener("click", () => {
     setFilterVal("filter-cible", "Champ à créer");
   });
-  document.getElementById("stat-sf-codial").addEventListener("click", () => {
+  document.getElementById("stat-sf-codial")?.addEventListener("click", () => {
     setFilterVal("filter-flux", "Salesforce => Codial");
   });
-  document.getElementById("stat-codial-sf").addEventListener("click", () => {
+  document.getElementById("stat-codial-sf")?.addEventListener("click", () => {
     setFilterVal("filter-flux", "Codial => Salesforce");
   });
 }
