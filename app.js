@@ -101,12 +101,33 @@ function saveData() {
 }
 
 function resetToDefault() {
-  if (confirm("Voulez-vous réinitialiser le contrat avec les données initiales du fichier CSV ? Vos modifications actuelles des champs seront écrasées.")) {
-    contractItems = Array.isArray(defaultContractData) ? JSON.parse(JSON.stringify(defaultContractData)) : [];
+  if (confirm("Voulez-vous vider entièrement le contrat ? Toutes les règles de mapping et les métadonnées seront supprimées.")) {
+    // Vider les règles de mapping
+    contractItems = [];
     saveData();
+
+    // Vider les métadonnées
+    projectMetadata = {
+      client: "",
+      projet: "",
+      date: new Date().toISOString().slice(0, 10),
+      cdpClient: "",
+      cdpBizkor: "",
+      commentaires: ""
+    };
+    localStorage.setItem(STORAGE_KEY_META, JSON.stringify(projectMetadata));
+
+    // Réinitialiser les champs dans l'interface
+    document.getElementById("meta-client").value = "";
+    document.getElementById("meta-projet").value = "";
+    document.getElementById("meta-date").value = projectMetadata.date;
+    document.getElementById("meta-cdp-client").value = "";
+    document.getElementById("meta-cdp-bizkor").value = "";
+    document.getElementById("meta-commentaires").innerHTML = "";
+
     populateFilterDropdowns();
     render();
-    showToast("Contrat d'interface réinitialisé aux données initiales", "success");
+    showToast("Contrat vidé avec succès", "success");
   }
 }
 
