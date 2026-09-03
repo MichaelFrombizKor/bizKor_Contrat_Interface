@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Contrat d'Interfaces · Salesforce ↔ CODIAL</title>
+  <title>Contrat d'Interfaces — bizKor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -22,67 +22,23 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         <span>Nouveau contrat</span>
       </button>
-      <button class="g-btn g-btn-tonal" id="btn-reset-data" title="Restaurer le CSV original" onclick="resetToDefault()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-        <span>Réinitialiser CSV</span>
+      <button class="g-btn g-btn-tonal" id="btn-reset-data" title="Vider tout le contrat pour recommencer à zéro" onclick="resetToDefault()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        <span>Vider le contrat</span>
       </button>
-      <!-- Export PDF -->
-      <button class="g-btn g-btn-tonal" id="btn-export-pdf" title="Exporter en PDF (format paysage)" onclick="exportToPDF()">
+      <!-- Boutons d'export directs (Contrat Complet) -->
+      <button class="g-btn g-btn-tonal" id="btn-export-pdf" title="Exporter le contrat complet en PDF (format paysage)" onclick="exportToPDF()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4zm7 0h-2v4h2"/><line x1="9" y1="17" x2="9" y2="13"/></svg>
         <span>Exporter PDF</span>
       </button>
-      <!-- Export CSV Split Button -->
-      <div class="split-btn-wrapper" id="csv-split-wrapper">
-        <button class="g-btn g-btn-tonal split-btn-main" id="btn-export" title="Exporter tous les champs en CSV" onclick="exportToCSV('all')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Exporter CSV</span>
-        </button>
-        <button class="split-btn-caret g-btn g-btn-tonal" id="btn-export-caret" title="Choisir le périmètre d'export" onclick="toggleCsvMenu(event)" aria-haspopup="true" aria-expanded="false">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="csv-dropdown hidden" id="csv-dropdown" role="menu">
-          <div class="csv-dropdown-header">Classeur Excel (.xlsx Multi-onglets)</div>
-          <button class="csv-dropdown-item" onclick="exportToExcel('all'); closeCsvMenu()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#107C41" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13l3 4m0-4l-3 4m5-4v4"/></svg>
-            <strong>Excel (2 onglets : Projet + Contrat)</strong>
-            <span class="csv-count" id="csv-count-all"></span>
-          </button>
-          <button class="csv-dropdown-item" onclick="exportToExcel('sf-codial'); closeCsvMenu()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#107C41" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            Excel SF → Codial (2 onglets)
-            <span class="csv-count" id="csv-count-sf"></span>
-          </button>
-          <button class="csv-dropdown-item" onclick="exportToExcel('codial-sf'); closeCsvMenu()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#107C41" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            Excel Codial → SF (2 onglets)
-            <span class="csv-count" id="csv-count-codial"></span>
-          </button>
-          <button class="csv-dropdown-item" onclick="exportToExcel('interfacer'); closeCsvMenu()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#107C41" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-            Excel À interfacer (2 onglets)
-            <span class="csv-count" id="csv-count-interfacer"></span>
-          </button>
-
-          <div class="csv-dropdown-divider"></div>
-          <div class="csv-dropdown-header">Fichier CSV (.csv avec métadonnées)</div>
-          <button class="csv-dropdown-item" onclick="exportToCSV('all'); closeCsvMenu()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            CSV Tous les champs
-          </button>
-          <button class="csv-dropdown-item" onclick="exportToCSV('sf-codial'); closeCsvMenu()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            CSV SF → Codial
-          </button>
-          <button class="csv-dropdown-item" onclick="exportToCSV('codial-sf'); closeCsvMenu()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            CSV Codial → SF
-          </button>
-          <button class="csv-dropdown-item" onclick="exportToCSV('interfacer'); closeCsvMenu()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-            CSV À interfacer (✅ Oui)
-          </button>
-        </div>
-      </div>
+      <button class="g-btn g-btn-tonal" id="btn-export-excel" title="Télécharger le contrat complet au format Excel (.xlsx multi-onglets)" onclick="exportToExcel()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#107C41" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13l3 4m0-4l-3 4m5-4v4"/></svg>
+        <span>Exporter Excel</span>
+      </button>
+      <button class="g-btn g-btn-tonal" id="btn-export-csv" title="Télécharger le contrat complet au format CSV" onclick="exportToCSV()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Exporter CSV</span>
+      </button>
       <!-- Administration Picklists -->
       <button class="g-btn g-btn-tonal" id="btn-admin-picklists" title="Gérer les listes de valeurs (Picklists)" onclick="openAdminModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>

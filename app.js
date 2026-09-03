@@ -1273,51 +1273,7 @@ function duplicateItem(id) {
   showToast(`Champ "${item.champ}" dupliqué`, "success");
 }
 
-// Menu Dropdown Export CSV
-function toggleCsvMenu(e) {
-  if (e) e.stopPropagation();
-  const menu = document.getElementById("csv-dropdown");
-  const caret = document.getElementById("btn-export-caret");
-  const isHidden = menu.classList.contains("hidden");
-  if (isHidden) {
-    updateCsvCounts();
-    menu.classList.remove("hidden");
-    caret.setAttribute("aria-expanded", "true");
-  } else {
-    closeCsvMenu();
-  }
-}
 
-function closeCsvMenu() {
-  const menu = document.getElementById("csv-dropdown");
-  const caret = document.getElementById("btn-export-caret");
-  if (menu) menu.classList.add("hidden");
-  if (caret) caret.setAttribute("aria-expanded", "false");
-}
-
-function updateCsvCounts() {
-  const allCount = contractItems.length;
-  const sfCount = contractItems.filter(i => (i.sensFlux || "").includes("Salesforce => Codial")).length;
-  const codialCount = contractItems.filter(i => (i.sensFlux || "").includes("Codial => Salesforce")).length;
-  const interfacerCount = contractItems.filter(i => (i.aInterfacer || "").includes("Oui")).length;
-
-  const elAll = document.getElementById("csv-count-all");
-  const elSf = document.getElementById("csv-count-sf");
-  const elCodial = document.getElementById("csv-count-codial");
-  const elInterfacer = document.getElementById("csv-count-interfacer");
-
-  if (elAll) elAll.textContent = `${allCount}`;
-  if (elSf) elSf.textContent = `${sfCount}`;
-  if (elCodial) elCodial.textContent = `${codialCount}`;
-  if (elInterfacer) elInterfacer.textContent = `${interfacerCount}`;
-}
-
-// Fermeture du dropdown CSV au clic en dehors
-window.addEventListener("click", (e) => {
-  if (!e.target.closest("#csv-split-wrapper")) {
-    closeCsvMenu();
-  }
-});
 
 // Export PDF pleine largeur format paysage
 function exportToPDF() {
@@ -1335,13 +1291,21 @@ function exportToPDF() {
     render();
   }
 
-  closeCsvMenu();
   closeModal();
 
-  showToast("Préparation du document PDF (format paysage adapté sur la largeur)...", "info");
+  const originalTitle = document.title;
+  const clientName = (projectMetadata.client || "").trim();
+  const projectName = (projectMetadata.projet || "").trim();
+  const pdfTitleParts = [clientName, projectName || "Contrat d'Interfaces"].filter(Boolean);
+  document.title = pdfTitleParts.join(" - ") + " — bizKor";
+
+  showToast("Préparation du document PDF (format paysage)...", "info");
 
   setTimeout(() => {
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   }, 350);
 }
 
@@ -1353,64 +1317,48 @@ function stripHtml(html) {
   return tmp.textContent || tmp.innerText || "";
 }
 
-// Export Excel Multi-onglets (.xlsx) avec 2 onglets : "Informations Projet" + "Contrat d'Interfaces"
-function exportToExcel(scope = "all") {
+// Export Excel Multi-onglets (.xlsx) avec 2 onglets : "Informations Projet" + "Contrat d'Interfaces" (Complet)
+function exportToExcel() {
   if (typeof XLSX === "undefined") {
     showToast("La librairie Excel est en cours de chargement... Veuillez réessayer.", "warning");
     return;
   }
 
-  // 1. Filtrer les enregistrements selon le scope
-  let itemsToExport = [...contractItems];
-  let suffixLabel = "Complet";
-
-  if (scope === "sf-codial") {
-    itemsToExport = contractItems.filter(i => (i.sensFlux || "").includes("Salesforce => Codial"));
-    suffixLabel = "Flux_SF_vers_Codial";
-  } else if (scope === "codial-sf") {
-    itemsToExport = contractItems.filter(i => (i.sensFlux || "").includes("Codial => Salesforce"));
-    suffixLabel = "Flux_Codial_vers_SF";
-  } else if (scope === "interfacer") {
-    itemsToExport = contractItems.filter(i => (i.aInterfacer || "").includes("Oui"));
-    suffixLabel = "A_Interfacer_Uniquement";
-  }
+  const itemsToExport = [...contractItems];
 
   if (itemsToExport.length === 0) {
-    showToast("Aucun champ ne correspond au périmètre sélectionné.", "danger");
+    showToast("Le contrat est actuellement vide. Aucun champ à exporter.", "danger");
     return;
   }
 
-  // 2. Créer le classeur Excel
+  // 1. Créer le classeur Excel
   const wb = XLSX.utils.book_new();
 
-  // 3. Onglet 1 : Informations Projet (Cartouche d'en-tête bizKor)
+  // 2. Onglet 1 : Informations Projet (Cartouche d'en-tête bizKor)
   const metaSheetData = [
     ["SOCIÉTÉ", "bizKor"],
-    ["CLIENT", projectMetadata.client || "ADLUCEM"],
-    ["PROJET", projectMetadata.projet || "Intégration Codial"],
+    ["CLIENT", projectMetadata.client || "-"],
+    ["PROJET", projectMetadata.projet || "Contrat d'Interfaces"],
     ["DATE", projectMetadata.date || new Date().toISOString().slice(0, 10)],
-    ["CHEF DE PROJET CLIENT", projectMetadata.cdpClient || "Orane LABROSSE"],
-    ["CHEF DE PROJET BIZKOR", projectMetadata.cdpBizkor || "Michael MARCELINO"],
-    ["PÉRIMÈTRE DE L'EXPORT", suffixLabel.replace(/_/g, " ")],
+    ["CHEF DE PROJET CLIENT", projectMetadata.cdpClient || "-"],
+    ["CHEF DE PROJET BIZKOR", projectMetadata.cdpBizkor || "-"],
+    ["PÉRIMÈTRE DE L'EXPORT", "Contrat Complet"],
     [""],
     ["COMMENTAIRES & NOTES D'ARCHITECTURE"],
     [stripHtml(projectMetadata.commentaires || "")],
     [""],
-    ["SYNTHÈSE STATISTIQUE DU CONTRAT"],
+    ["SYNTHÈSE DU CONTRAT"],
     ["Total des champs de mapping", contractItems.length],
     ["Champs à interfacer (✅ Oui)", contractItems.filter(i => (i.aInterfacer || "").includes("Oui")).length],
     ["Champs non interfacés (❌ Non)", contractItems.filter(i => (i.aInterfacer || "").includes("Non")).length],
-    ["Champs à créer côté cible", contractItems.filter(i => (i.cibleExistante || "").includes("créer")).length],
-    ["Flux Salesforce ➔ Codial", contractItems.filter(i => (i.sensFlux || "").includes("Salesforce => Codial")).length],
-    ["Flux Codial ➔ Salesforce", contractItems.filter(i => (i.sensFlux || "").includes("Codial => Salesforce")).length]
+    ["Champs à créer côté cible", contractItems.filter(i => (i.cibleExistante || "").includes("créer")).length]
   ];
 
   const wsMeta = XLSX.utils.aoa_to_sheet(metaSheetData);
-  // Largeurs de colonnes pour l'onglet Informations Projet
   wsMeta["!cols"] = [{ wch: 35 }, { wch: 90 }];
   XLSX.utils.book_append_sheet(wb, wsMeta, "Informations Projet");
 
-  // 4. Onglet 2 : Contrat d'Interfaces (Données de mapping)
+  // 3. Onglet 2 : Contrat d'Interfaces (Données de mapping)
   const headers = [
     "Sens du flux",
     "Objet / Table",
@@ -1458,7 +1406,6 @@ function exportToExcel(scope = "all") {
   });
 
   const wsContract = XLSX.utils.aoa_to_sheet(contractRows);
-  // Largeurs de colonnes calibrées pour l'onglet Contrat
   wsContract["!cols"] = [
     { wch: 22 }, // Sens du flux
     { wch: 25 }, // Objet / Table
@@ -1482,16 +1429,18 @@ function exportToExcel(scope = "all") {
 
   XLSX.utils.book_append_sheet(wb, wsContract, "Contrat d'Interfaces");
 
-  // Nom du fichier
-  const clientClean = (projectMetadata.client || "ADLUCEM").replace(/[^a-zA-Z0-9]/g, "_");
+  // Nom du fichier sans mention Codial
+  const clientClean = (projectMetadata.client || "Client").replace(/[^a-zA-Z0-9]/g, "_");
+  const projetClean = (projectMetadata.projet || "Contrat_Interfaces").replace(/[^a-zA-Z0-9]/g, "_");
   const dateClean = (projectMetadata.date || new Date().toISOString().slice(0, 10)).replace(/[^a-zA-Z0-9]/g, "");
-  const fileName = `${dateClean}_${clientClean}_Contrat_des_interfaces_${suffixLabel}.xlsx`;
+  const fileName = `${dateClean}_${clientClean}_${projetClean}.xlsx`;
 
   XLSX.writeFile(wb, fileName);
-  showToast(`Classeur Excel exporté avec succès (${itemsToExport.length} lignes) !`, "success");
+  showToast(`Classeur Excel exporté (${itemsToExport.length} lignes) !`, "success");
 }
 
-function exportToCSV(scope = "all") {
+// Export CSV complet avec métadonnées d'en-tête (sans mention Codial)
+function exportToCSV() {
   const headers = [
     "Sens du flux",
     "Objet / Table",
@@ -1522,23 +1471,10 @@ function exportToCSV(scope = "all") {
     return str;
   }
 
-  // Filtrer les enregistrements selon le scope sélectionné
-  let itemsToExport = [...contractItems];
-  let suffixLabel = "Complet";
-
-  if (scope === "sf-codial") {
-    itemsToExport = contractItems.filter(i => (i.sensFlux || "").includes("Salesforce => Codial"));
-    suffixLabel = "Flux_SF_vers_Codial";
-  } else if (scope === "codial-sf") {
-    itemsToExport = contractItems.filter(i => (i.sensFlux || "").includes("Codial => Salesforce"));
-    suffixLabel = "Flux_Codial_vers_SF";
-  } else if (scope === "interfacer") {
-    itemsToExport = contractItems.filter(i => (i.aInterfacer || "").includes("Oui"));
-    suffixLabel = "A_Interfacer_Uniquement";
-  }
+  const itemsToExport = [...contractItems];
 
   if (itemsToExport.length === 0) {
-    showToast("Aucun champ ne correspond au périmètre sélectionné pour l'export.", "danger");
+    showToast("Le contrat est actuellement vide. Aucun champ à exporter.", "danger");
     return;
   }
 
@@ -1546,12 +1482,12 @@ function exportToCSV(scope = "all") {
   const headerMetaLines = [
     `# ==============================================================================`,
     `# CONTRAT D'INTERFACES - bizKor`,
-    `# CLIENT : ${projectMetadata.client || "ADLUCEM"}`,
-    `# PROJET : ${projectMetadata.projet || "Intégration Codial"}`,
+    `# CLIENT : ${projectMetadata.client || "-"}`,
+    `# PROJET : ${projectMetadata.projet || "Contrat d'Interfaces"}`,
     `# DATE : ${projectMetadata.date || new Date().toISOString().slice(0, 10)}`,
-    `# CHEF DE PROJET CLIENT : ${projectMetadata.cdpClient || "Orane LABROSSE"}`,
-    `# CHEF DE PROJET BIZKOR : ${projectMetadata.cdpBizkor || "Michael MARCELINO"}`,
-    `# PÉRIMÈTRE : ${suffixLabel.replace(/_/g, " ")} (${itemsToExport.length} champs)`,
+    `# CHEF DE PROJET CLIENT : ${projectMetadata.cdpClient || "-"}`,
+    `# CHEF DE PROJET BIZKOR : ${projectMetadata.cdpBizkor || "-"}`,
+    `# PÉRIMÈTRE : Contrat Complet (${itemsToExport.length} champs)`,
     `# ==============================================================================`
   ];
 
@@ -1586,18 +1522,19 @@ function exportToCSV(scope = "all") {
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   
-  const clientSanitized = (projectMetadata.client || "CLIENT").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const clientSanitized = (projectMetadata.client || "Client").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const projetSanitized = (projectMetadata.projet || "Contrat_Interfaces").replace(/[^a-zA-Z0-9_-]/g, "_");
   const dateStr = (projectMetadata.date || new Date().toISOString().slice(0, 10)).replace(/-/g, "");
   
   const link = document.createElement("a");
   link.setAttribute("href", url);
-  link.setAttribute("download", `${dateStr}_${clientSanitized}_-_Integration_CODIAL_-_Contrat_${suffixLabel}.csv`);
+  link.setAttribute("download", `${dateStr}_${clientSanitized}_${projetSanitized}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 
-  showToast(`Fichier CSV exporté (${itemsToExport.length} champs - ${suffixLabel.replace(/_/g, ' ')})`, "success");
+  showToast(`Fichier CSV exporté (${itemsToExport.length} champs)`, "success");
 }
 
 function showToast(message, type = "info") {
