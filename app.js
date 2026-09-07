@@ -759,6 +759,14 @@ function setupEventListeners() {
     });
   }
 
+  // Modal Import
+  const importOverlay = document.getElementById("modal-import-overlay");
+  if (importOverlay) {
+    importOverlay.addEventListener("click", (e) => {
+      if (e.target.id === "modal-import-overlay") closeImportModal();
+    });
+  }
+
   const adminInputNew = document.getElementById("admin-input-new");
   if (adminInputNew) {
     adminInputNew.addEventListener("keydown", (e) => {
@@ -1570,6 +1578,718 @@ function showToast(message, type = "info") {
     toast.style.transition = "all 0.25s ease";
     setTimeout(() => toast.remove(), 250);
   }, 3200);
+}
+
+// ==============================================================================
+// GESTIONNAIRE D'IMPORTATION DE FICHIER & MAPPING ASSISTANT
+// ==============================================================================
+
+// Définition des champs cibles du contrat avec leurs synonymes et alias pour auto-détection intelligente
+const CONTRACT_TARGET_FIELDS = [
+  {
+    key: "champ",
+    label: "Nom du champ",
+    required: true,
+    description: "Nom d'usage ou libellé du champ source",
+    aliases: ["nom du champ", "champ", "field", "field name", "nom", "libelle", "libellé", "label", "source label", "column", "colonne"]
+  },
+  {
+    key: "objetOnglet",
+    label: "Objet / Table",
+    required: false,
+    description: "Objet ou entité Salesforce / ERP",
+    aliases: ["objet / table", "objet", "table", "object", "entity", "entite", "entité", "objet / onglet", "onglet"]
+  },
+  {
+    key: "sensFlux",
+    label: "Sens du flux",
+    required: false,
+    description: "Sens de l'échange de données",
+    aliases: ["sens du flux", "sens", "flux", "direction", "flow", "sens flux", "sens de flux"]
+  },
+  {
+    key: "apiNameSource",
+    label: "API Name (source)",
+    required: false,
+    description: "Nom technique / API dans le système source",
+    aliases: ["api name (source)", "api name source", "api name", "apiname", "source api", "champ technique source", "source field"]
+  },
+  {
+    key: "dataTypeSource",
+    label: "Data Type (source)",
+    required: false,
+    description: "Type de données (Text, Number, Date, etc.)",
+    aliases: ["data type (source)", "data type source", "data type", "datatype", "type", "type de donnees", "type de données"]
+  },
+  {
+    key: "required",
+    label: "Required (Requis)",
+    required: false,
+    description: "Caractère obligatoire du champ",
+    aliases: ["required", "requis", "obligatoire", "mandatory", "is required"]
+  },
+  {
+    key: "values",
+    label: "Values (Picklist, Formula)",
+    required: false,
+    description: "Valeurs de picklist ou formules associées",
+    aliases: ["values (picklist, formula)", "values", "valeurs", "picklist values", "valeurs autorisees", "valeurs autorisées", "liste"]
+  },
+  {
+    key: "aInterfacer",
+    label: "À interfacer",
+    required: false,
+    description: "Inclusion dans le périmètre (Oui / Non)",
+    aliases: ["a interfacer", "à interfacer", "interfacer", "a synchroniser", "à synchroniser", "synchroniser", "scope", "perimetre", "périmètre"]
+  },
+  {
+    key: "synchro",
+    label: "Synchro",
+    required: false,
+    description: "Mode de synchronisation (Création, Modification...)",
+    aliases: ["synchro", "synchronisation", "sync", "mode synchro", "type synchro", "sync type"]
+  },
+  {
+    key: "cibleExistante",
+    label: "Cible existante",
+    required: false,
+    description: "Champ existant, à créer ou à modifier",
+    aliases: ["cible existante", "cible", "statut cible", "action cible", "target status"]
+  },
+  {
+    key: "fieldLabelCible",
+    label: "Field Label (cible)",
+    required: false,
+    description: "Libellé côté système cible",
+    aliases: ["field label (cible)", "field label cible", "target label", "label cible", "libelle cible", "libellé cible"]
+  },
+  {
+    key: "apiNameCible",
+    label: "API Name (cible)",
+    required: false,
+    description: "Nom technique / API côté système cible",
+    aliases: ["api name (cible)", "api name cible", "target api", "api cible", "champ technique cible", "nom technique cible"]
+  },
+  {
+    key: "fichierPlat",
+    label: "Fichier à plat",
+    required: false,
+    description: "Nom du fichier ou interface plate",
+    aliases: ["fichier a plat", "fichier à plat", "flat file", "fichier plat", "fichier"]
+  },
+  {
+    key: "frequenceDepot",
+    label: "Fréquence des dépôts",
+    required: false,
+    description: "Périodicité des transferts",
+    aliases: ["frequence des depots", "fréquence des dépôts", "frequence", "fréquence", "periodicite", "périodicité", "frequency"]
+  },
+  {
+    key: "operationsDml",
+    label: "Opérations DML",
+    required: false,
+    description: "Opération DML (Insert, Update, Upsert...)",
+    aliases: ["operations dml", "opérations dml", "dml", "operation dml", "opération dml"]
+  },
+  {
+    key: "cleIntegration",
+    label: "Clé d'intégration",
+    required: false,
+    description: "Identifiant unique externe ou clé de rapprochement",
+    aliases: ["cle d'integration", "clé d'intégration", "cle integration", "clé intégration", "integration key", "external id", "cle"]
+  },
+  {
+    key: "filtresDonnees",
+    label: "Filtres des données",
+    required: false,
+    description: "Conditions ou filtres appliqués à l'extraction",
+    aliases: ["filtres des donnees", "filtres des données", "filtres", "filter", "filters", "conditions"]
+  },
+  {
+    key: "commentaires",
+    label: "Commentaires",
+    required: false,
+    description: "Notes d'architecture ou règles fonctionnelles",
+    aliases: ["commentaires", "commentaire", "comment", "comments", "notes", "remarques", "regles", "règles"]
+  }
+];
+
+// État d'importation en cours
+let currentImportState = {
+  workbook: null,
+  fileName: "",
+  sheetNames: [],
+  selectedSheet: "",
+  rawRows: [],       // Données brutes [ [col0, col1, ...], ... ]
+  headers: [],       // Noms des colonnes du fichier
+  fieldMapping: {},  // { targetKey: sourceColumnName }
+  dataStartIndex: 1  // Index de la 1ère ligne de données
+};
+
+function openImportModal() {
+  const overlay = document.getElementById("modal-import-overlay");
+  if (!overlay) return;
+  overlay.classList.remove("hidden");
+
+  // Si aucun fichier n'a encore été chargé, afficher la zone de drop
+  if (!currentImportState.rawRows || currentImportState.rawRows.length === 0) {
+    document.getElementById("import-step-upload").classList.remove("hidden");
+    document.getElementById("import-step-mapping").classList.add("hidden");
+    document.getElementById("btn-confirm-import").disabled = true;
+  }
+}
+
+function closeImportModal() {
+  const overlay = document.getElementById("modal-import-overlay");
+  if (overlay) overlay.classList.add("hidden");
+}
+
+function resetImportFile() {
+  currentImportState = {
+    workbook: null,
+    fileName: "",
+    sheetNames: [],
+    selectedSheet: "",
+    rawRows: [],
+    headers: [],
+    fieldMapping: {},
+    dataStartIndex: 1
+  };
+  const fileInput = document.getElementById("input-import-file");
+  if (fileInput) fileInput.value = "";
+  const fileInputModal = document.getElementById("input-import-file-modal");
+  if (fileInputModal) fileInputModal.value = "";
+
+  document.getElementById("import-step-upload").classList.remove("hidden");
+  document.getElementById("import-step-mapping").classList.add("hidden");
+  document.getElementById("btn-confirm-import").disabled = true;
+}
+
+function handleFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  openImportModal();
+  processUploadedFile(file);
+}
+
+// Support Drag & Drop sur la zone d'upload
+document.addEventListener("DOMContentLoaded", () => {
+  const dropZone = document.getElementById("import-step-upload");
+  if (dropZone) {
+    ["dragenter", "dragover"].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add("dragover");
+      }, false);
+    });
+
+    ["dragleave", "drop"].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove("dragover");
+      }, false);
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+      const dt = e.dataTransfer;
+      const file = dt && dt.files && dt.files[0];
+      if (file) {
+        processUploadedFile(file);
+      }
+    }, false);
+  }
+});
+
+function processUploadedFile(file) {
+  currentImportState.fileName = file.name;
+  showToast(`Lecture de ${file.name}...`, "info");
+
+  const reader = new FileReader();
+
+  const isCsv = file.name.toLowerCase().endsWith(".csv");
+
+  reader.onload = function(e) {
+    try {
+      if (typeof XLSX === "undefined") {
+        showToast("Librairie de lecture XLSX non chargée. Veuillez actualiser la page.", "danger");
+        return;
+      }
+
+      let workbook;
+      if (isCsv) {
+        // Détection encodage et lecture robuste du CSV
+        const text = e.target.result;
+        workbook = XLSX.read(text, { type: "string", raw: true });
+      } else {
+        const data = new Uint8Array(e.target.result);
+        workbook = XLSX.read(data, { type: "array" });
+      }
+
+      currentImportState.workbook = workbook;
+      currentImportState.sheetNames = workbook.SheetNames || [];
+
+      if (currentImportState.sheetNames.length === 0) {
+        showToast("Le fichier ne contient aucune feuille lisible.", "danger");
+        return;
+      }
+
+      // Sélection par défaut : recherche d'une feuille nommée "Contrat" ou la 1ère / 2ème
+      let defaultSheet = currentImportState.sheetNames[0];
+      const foundContractSheet = currentImportState.sheetNames.find(name => 
+        name.toLowerCase().includes("contrat") || name.toLowerCase().includes("interface") || name.toLowerCase().includes("mapping")
+      );
+      if (foundContractSheet) {
+        defaultSheet = foundContractSheet;
+      } else if (currentImportState.sheetNames.length > 1 && currentImportState.sheetNames[1]) {
+        // Dans nos exports multi-onglets bizKor, l'onglet 2 est "Contrat d'Interfaces"
+        defaultSheet = currentImportState.sheetNames[1];
+      }
+
+      currentImportState.selectedSheet = defaultSheet;
+
+      // Configurer le sélecteur de feuille si plusieurs
+      const sheetSelectorGroup = document.getElementById("import-sheet-selector-group");
+      const sheetSelect = document.getElementById("import-sheet-select");
+      if (currentImportState.sheetNames.length > 1) {
+        sheetSelectorGroup.classList.remove("hidden");
+        sheetSelect.innerHTML = currentImportState.sheetNames.map(name => 
+          `<option value="${escapeHtml(name)}" ${name === defaultSheet ? 'selected' : ''}>${escapeHtml(name)}</option>`
+        ).join("");
+      } else {
+        sheetSelectorGroup.classList.add("hidden");
+      }
+
+      loadSheetData(defaultSheet);
+
+    } catch (err) {
+      console.error("Erreur lecture fichier", err);
+      showToast("Impossible de lire ce fichier. Assurez-vous qu'il s'agit d'un Excel ou CSV valide.", "danger");
+    }
+  };
+
+  if (isCsv) {
+    reader.readAsText(file, "UTF-8");
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function handleImportSheetChange() {
+  const sheetSelect = document.getElementById("import-sheet-select");
+  if (!sheetSelect) return;
+  const newSheet = sheetSelect.value;
+  currentImportState.selectedSheet = newSheet;
+  loadSheetData(newSheet);
+}
+
+function loadSheetData(sheetName) {
+  const sheet = currentImportState.workbook.Sheets[sheetName];
+  if (!sheet) return;
+
+  // Convertir la feuille en tableau 2D de lignes brutes
+  const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+  if (!rawData || rawData.length === 0) {
+    showToast(`La feuille "${sheetName}" est vide.`, "warning");
+    return;
+  }
+
+  // Détecter la ligne d'en-tête (en sautant les lignes de métadonnées ou commentaires commençant par #)
+  let headerRowIndex = 0;
+  for (let i = 0; i < Math.min(rawData.length, 15); i++) {
+    const row = rawData[i];
+    if (!Array.isArray(row) || row.length === 0) continue;
+    const firstCell = String(row[0] || "").trim();
+    if (firstCell.startsWith("#")) continue; // Ligne de métadonnées de notre export CSV
+
+    // Compter les cellules textuelles non vides
+    const nonEmptyCells = row.filter(c => String(c).trim() !== "");
+    if (nonEmptyCells.length >= 2) {
+      headerRowIndex = i;
+      break;
+    }
+  }
+
+  const rawHeaders = (rawData[headerRowIndex] || []).map(h => String(h || "").trim());
+  const fileHeaders = rawHeaders.filter((h, idx) => h !== "" || idx < 30); // Éviter colonnes fantômes
+
+  // Nettoyer les lignes de données en ignorant les lignes vides ou de commentaires
+  const dataRows = [];
+  for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+    const row = rawData[i];
+    if (!Array.isArray(row)) continue;
+    const firstCell = String(row[0] || "").trim();
+    if (firstCell.startsWith("#")) continue;
+    const hasData = row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== "");
+    if (hasData) {
+      dataRows.push(row);
+    }
+  }
+
+  currentImportState.rawRows = dataRows;
+  currentImportState.headers = fileHeaders;
+  currentImportState.dataStartIndex = headerRowIndex + 1;
+
+  // Mise à jour de la bannière
+  document.getElementById("import-file-name").textContent = currentImportState.fileName + (currentImportState.sheetNames.length > 1 ? ` (${sheetName})` : "");
+  document.getElementById("import-file-stats").textContent = `${fileHeaders.filter(Boolean).length} colonnes détectées • ${dataRows.length} lignes de données prêtes`;
+
+  // Basculer l'affichage vers l'étape de mapping
+  document.getElementById("import-step-upload").classList.add("hidden");
+  document.getElementById("import-step-mapping").classList.remove("hidden");
+
+  // Détection automatique du mapping
+  autoDetectMapping();
+
+  document.getElementById("btn-confirm-import").disabled = (dataRows.length === 0);
+  document.getElementById("btn-confirm-import-text").textContent = `Importer ${dataRows.length} champ${dataRows.length > 1 ? 's' : ''}`;
+}
+
+// Fonction de normalisation pour la comparaison fuzzy de colonnes
+function normalizeHeader(str) {
+  if (!str) return "";
+  return String(str)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Supprimer les accents
+    .replace(/[^a-z0-9]/g, "");     // Garder uniquement caractères alphanumériques
+}
+
+// Détection intelligente du mapping
+function autoDetectMapping() {
+  const mapping = {};
+  const fileHeaders = currentImportState.headers || [];
+
+  CONTRACT_TARGET_FIELDS.forEach(target => {
+    let matchedColumn = "";
+
+    // 1. Recherche par correspondance exacte ou normalisée sur les alias
+    for (const header of fileHeaders) {
+      if (!header) continue;
+      const normH = normalizeHeader(header);
+
+      for (const alias of target.aliases) {
+        const normAlias = normalizeHeader(alias);
+        if (normH === normAlias) {
+          matchedColumn = header;
+          break;
+        }
+      }
+      if (matchedColumn) break;
+    }
+
+    // 2. Si non trouvé, recherche par inclusion partielle forte
+    if (!matchedColumn) {
+      for (const header of fileHeaders) {
+        if (!header) continue;
+        const normH = normalizeHeader(header);
+        const normTarget = normalizeHeader(target.key);
+        const normLabel = normalizeHeader(target.label);
+
+        if (normH.includes(normTarget) || normH.includes(normLabel)) {
+          matchedColumn = header;
+          break;
+        }
+      }
+    }
+
+    if (matchedColumn) {
+      mapping[target.key] = matchedColumn;
+    }
+  });
+
+  currentImportState.fieldMapping = mapping;
+  renderMappingTable();
+  renderImportPreview();
+}
+
+function renderMappingTable() {
+  const tbody = document.getElementById("import-mapping-tbody");
+  if (!tbody) return;
+
+  const fileHeaders = currentImportState.headers || [];
+  const sampleRow = currentImportState.rawRows[0] || [];
+
+  tbody.innerHTML = CONTRACT_TARGET_FIELDS.map(target => {
+    const isRequired = target.required;
+    const selectedSource = currentImportState.fieldMapping[target.key] || "";
+    const isMapped = !!selectedSource;
+
+    // Exemple de données pour la colonne sélectionnée
+    let sampleVal = "-";
+    if (selectedSource) {
+      const colIndex = fileHeaders.indexOf(selectedSource);
+      if (colIndex !== -1 && sampleRow[colIndex] !== undefined && sampleRow[colIndex] !== null) {
+        sampleVal = String(sampleRow[colIndex]);
+      }
+    }
+
+    const optionsHtml = [
+      `<option value="">-- Ignorer ce champ --</option>`,
+      ...fileHeaders.filter(Boolean).map(h => {
+        const isSel = (h === selectedSource);
+        return `<option value="${escapeHtml(h)}" ${isSel ? 'selected' : ''}>${escapeHtml(h)}</option>`;
+      })
+    ].join("");
+
+    return `
+      <tr>
+        <td>
+          <div class="import-target-field">
+            <span class="import-target-name">
+              ${escapeHtml(target.label)}
+              ${isRequired ? '<span class="required-star" title="Champ obligatoire">*</span>' : ''}
+            </span>
+            <span class="import-target-key">${escapeHtml(target.description)}</span>
+          </div>
+        </td>
+        <td>
+          <select 
+            class="import-select-source ${isMapped ? 'mapped' : ''}" 
+            data-target="${target.key}" 
+            onchange="handleMappingChange('${target.key}', this.value)"
+          >
+            ${optionsHtml}
+          </select>
+        </td>
+        <td>
+          <span class="import-sample-pill" id="sample-preview-${target.key}" title="${escapeHtml(sampleVal)}">
+            ${escapeHtml(sampleVal)}
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function handleMappingChange(targetKey, sourceColumn) {
+  if (sourceColumn) {
+    currentImportState.fieldMapping[targetKey] = sourceColumn;
+  } else {
+    delete currentImportState.fieldMapping[targetKey];
+  }
+
+  // Mettre à jour l'exemple de données associé
+  const samplePill = document.getElementById(`sample-preview-${targetKey}`);
+  if (samplePill) {
+    let sampleVal = "-";
+    if (sourceColumn) {
+      const fileHeaders = currentImportState.headers || [];
+      const colIndex = fileHeaders.indexOf(sourceColumn);
+      const sampleRow = currentImportState.rawRows[0] || [];
+      if (colIndex !== -1 && sampleRow[colIndex] !== undefined && sampleRow[colIndex] !== null) {
+        sampleVal = String(sampleRow[colIndex]);
+      }
+    }
+    samplePill.textContent = sampleVal;
+    samplePill.title = sampleVal;
+  }
+
+  // Mettre à jour le style visuel du select
+  const selectEl = document.querySelector(`.import-select-source[data-target="${targetKey}"]`);
+  if (selectEl) {
+    selectEl.classList.toggle("mapped", !!sourceColumn);
+  }
+
+  renderImportPreview();
+}
+
+function renderImportPreview() {
+  const container = document.getElementById("import-preview-table-wrapper");
+  if (!container) return;
+
+  const fileHeaders = currentImportState.headers || [];
+  const previewRows = (currentImportState.rawRows || []).slice(0, 3);
+
+  // Colonnes actuellement mappées
+  const mappedTargets = CONTRACT_TARGET_FIELDS.filter(t => currentImportState.fieldMapping[t.key]);
+
+  if (mappedTargets.length === 0) {
+    container.innerHTML = `<div style="padding: 0.75rem; font-size: 0.78rem; color: var(--g-text-secondary); text-align: center;">Aucune colonne mappée pour le moment. Associez au moins le nom du champ ci-dessus.</div>`;
+    return;
+  }
+
+  const thHtml = mappedTargets.map(t => `<th>${escapeHtml(t.label)}</th>`).join("");
+  
+  const trsHtml = previewRows.map(row => {
+    const tds = mappedTargets.map(t => {
+      const sourceCol = currentImportState.fieldMapping[t.key];
+      const colIndex = fileHeaders.indexOf(sourceCol);
+      let val = (colIndex !== -1 && row[colIndex] !== undefined && row[colIndex] !== null) ? String(row[colIndex]) : "";
+      
+      // Nettoyage / normalisation visuelle pour l'aperçu
+      if (t.key === "aInterfacer") {
+        val = (val.toLowerCase().includes("oui") || val === "1" || val.toLowerCase() === "true") ? "✅ Oui" : "❌ Non";
+      }
+      return `<td>${escapeHtml(val || "-")}</td>`;
+    }).join("");
+    return `<tr>${tds}</tr>`;
+  }).join("");
+
+  container.innerHTML = `
+    <table class="import-preview-table">
+      <thead><tr>${thHtml}</tr></thead>
+      <tbody>${trsHtml}</tbody>
+    </table>
+  `;
+}
+
+// Confirmation et ingestion des données mappées
+function confirmImportData() {
+  const mapping = currentImportState.fieldMapping;
+  const fileHeaders = currentImportState.headers || [];
+  const rawRows = currentImportState.rawRows || [];
+
+  if (rawRows.length === 0) {
+    showToast("Aucune donnée à importer.", "danger");
+    return;
+  }
+
+  // Vérifier qu'au moins le champ "champ" (Nom du champ) ou un API name est mappé
+  if (!mapping.champ && !mapping.apiNameSource) {
+    showToast("Veuillez associer au moins la colonne 'Nom du champ' ou 'API Name' pour importer vos données.", "warning");
+    return;
+  }
+
+  const mode = document.querySelector('input[name="import-mode"]:checked')?.value || "append";
+
+  // Créer un index rapide des positions de colonnes
+  const colIndexMap = {};
+  for (const [targetKey, sourceCol] of Object.entries(mapping)) {
+    colIndexMap[targetKey] = fileHeaders.indexOf(sourceCol);
+  }
+
+  // Déterminer l'ID de départ
+  let nextId = 1;
+  if (mode === "append" && contractItems.length > 0) {
+    nextId = Math.max(...contractItems.map(i => i.id || 0)) + 1;
+  }
+
+  const newItems = [];
+  const detectedPicklists = {
+    flux: new Set(),
+    objet: new Set(),
+    synchro: new Set(),
+    cible: new Set(),
+    dml: new Set()
+  };
+
+  rawRows.forEach(row => {
+    const getVal = (key) => {
+      const idx = colIndexMap[key];
+      if (idx === undefined || idx === -1 || row[idx] === undefined || row[idx] === null) return "";
+      return String(row[idx]).trim();
+    };
+
+    let champName = getVal("champ");
+    const apiSource = getVal("apiNameSource");
+    if (!champName && apiSource) {
+      champName = apiSource;
+    }
+
+    if (!champName) {
+      // Ignorer les lignes sans aucun nom de champ identifiable
+      return;
+    }
+
+    // Normalisation 'aInterfacer'
+    const rawInterfacer = getVal("aInterfacer");
+    let aInterfacerVal = "✅ Oui";
+    if (rawInterfacer) {
+      const lower = rawInterfacer.toLowerCase();
+      if (lower.includes("non") || lower === "0" || lower === "false" || lower === "no") {
+        aInterfacerVal = "❌ Non";
+      }
+    }
+
+    // Normalisation 'required'
+    const rawReq = getVal("required");
+    let isRequired = false;
+    if (rawReq) {
+      const lowerReq = rawReq.toLowerCase();
+      if (lowerReq === "true" || lowerReq === "1" || lowerReq === "oui" || lowerReq === "yes" || lowerReq.includes("requis") || lowerReq.includes("obligatoire")) {
+        isRequired = true;
+      }
+    }
+
+    const sensFluxVal = getVal("sensFlux");
+    const objetVal = getVal("objetOnglet");
+    const synchroVal = getVal("synchro");
+    const cibleVal = getVal("cibleExistante");
+    const dmlVal = getVal("operationsDml");
+
+    if (sensFluxVal) detectedPicklists.flux.add(sensFluxVal);
+    if (objetVal) detectedPicklists.objet.add(objetVal);
+    if (synchroVal) detectedPicklists.synchro.add(synchroVal);
+    if (cibleVal) detectedPicklists.cible.add(cibleVal);
+    if (dmlVal) detectedPicklists.dml.add(dmlVal);
+
+    newItems.push({
+      id: nextId++,
+      champ: champName,
+      objetOnglet: objetVal,
+      sensFlux: sensFluxVal,
+      apiNameSource: apiSource,
+      dataTypeSource: getVal("dataTypeSource"),
+      required: isRequired,
+      values: getVal("values"),
+      aInterfacer: aInterfacerVal,
+      synchro: synchroVal,
+      cibleExistante: cibleVal,
+      fieldLabelCible: getVal("fieldLabelCible"),
+      apiNameCible: getVal("apiNameCible"),
+      commentaires: getVal("commentaires"),
+      fichierPlat: getVal("fichierPlat"),
+      frequenceDepot: getVal("frequenceDepot"),
+      operationsDml: dmlVal,
+      cleIntegration: getVal("cleIntegration"),
+      filtresDonnees: getVal("filtresDonnees")
+    });
+  });
+
+  if (newItems.length === 0) {
+    showToast("Aucune ligne valide n'a pu être extraite avec ce mapping.", "danger");
+    return;
+  }
+
+  // Enrichir les picklists administrées avec les nouvelles valeurs détectées
+  const currentPicklists = getAdminPicklists();
+  let picklistsUpdated = false;
+
+  ["flux", "objet", "synchro", "cible", "dml"].forEach(cat => {
+    const detectedSet = detectedPicklists[cat];
+    if (detectedSet && detectedSet.size > 0) {
+      const existing = currentPicklists[cat] || [];
+      detectedSet.forEach(val => {
+        if (val && !existing.includes(val)) {
+          existing.push(val);
+          picklistsUpdated = true;
+        }
+      });
+      currentPicklists[cat] = existing;
+    }
+  });
+
+  if (picklistsUpdated) {
+    saveAdminPicklists(currentPicklists);
+    populateFilterDropdowns();
+  }
+
+  // Appliquer le mode choisi
+  if (mode === "replace") {
+    contractItems = newItems;
+    showToast(`✅ Contrat remplacé avec succès : ${newItems.length} champs importés`, "success");
+  } else {
+    contractItems = [...contractItems, ...newItems];
+    showToast(`✅ ${newItems.length} champs ajoutés au contrat existant`, "success");
+  }
+
+  saveData();
+  closeImportModal();
+  render();
 }
 
 // Ouvre un nouveau contrat vierge dans une nouvelle fenêtre

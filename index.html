@@ -39,6 +39,12 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <span>Exporter CSV</span>
       </button>
+      <!-- Import de fichier avec mapping -->
+      <button class="g-btn g-btn-tonal" id="btn-import-file" title="Importer un fichier Excel ou CSV avec assistant de mapping" onclick="openImportModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Importer fichier</span>
+      </button>
+      <input type="file" id="input-import-file" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleFileSelected(event)" />
       <!-- Administration Picklists -->
       <button class="g-btn g-btn-tonal" id="btn-admin-picklists" title="Gérer les listes de valeurs (Picklists)" onclick="openAdminModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -553,6 +559,139 @@
             <polyline points="20 6 9 17 4 12"/>
           </svg>
           Enregistrer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Import de fichier & Mapping assistant -->
+  <div id="modal-import-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+    <div class="modal modal-import-dialog" id="modal-import-dialog">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div class="stat-icon stat-icon-blue" style="width: 36px; height: 36px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <div>
+            <h2 id="import-modal-title" style="margin:0; font-size: 1.15rem; font-weight: 600;">Importer un fichier & Configurer le mapping</h2>
+            <p id="import-modal-sub" style="margin:0; font-size: 0.8rem; color: var(--g-text-secondary); margin-top: 2px;">
+              Associez les colonnes de votre fichier Excel ou CSV aux champs du contrat d'interface
+            </p>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeImportModal()" title="Fermer">×</button>
+      </div>
+
+      <div class="modal-body import-modal-body">
+        <!-- Étape 1 : Sélection / Drop de fichier -->
+        <div id="import-step-upload" class="import-upload-zone" onclick="document.getElementById('input-import-file').click()">
+          <input type="file" id="input-import-file-modal" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleFileSelected(event)" />
+          <div class="import-upload-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--g-blue)" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <div class="import-upload-text">
+            <strong>Cliquez pour choisir un fichier</strong> ou glissez-déposez ici
+          </div>
+          <div class="import-upload-hint">
+            Formats pris en charge : Excel (.xlsx, .xls) et CSV avec séparateurs virgule ou point-virgule
+          </div>
+        </div>
+
+        <!-- Étape 2 : Configuration du mapping & Options (visible après sélection) -->
+        <div id="import-step-mapping" class="hidden">
+          <!-- Barre d'infos sur le fichier chargé -->
+          <div class="import-file-banner">
+            <div class="import-file-meta">
+              <div class="import-file-icon">📄</div>
+              <div>
+                <div id="import-file-name" class="import-file-name">fichier.xlsx</div>
+                <div id="import-file-stats" class="import-file-stats">0 colonnes détectées • 0 lignes de données</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+              <!-- Sélecteur de feuille si Excel avec plusieurs onglets -->
+              <div id="import-sheet-selector-group" class="hidden" style="display: flex; align-items: center; gap: 0.4rem;">
+                <label for="import-sheet-select" style="font-size: 0.75rem; font-weight: 600; color: var(--g-text-secondary);">Feuille :</label>
+                <select id="import-sheet-select" class="g-select" style="font-size: 0.8rem; padding: 0.35rem 0.6rem;" onchange="handleImportSheetChange()"></select>
+              </div>
+              <button class="g-btn-text" style="font-size: 0.8rem;" onclick="resetImportFile()">Changer de fichier</button>
+            </div>
+          </div>
+
+          <!-- Mode d'importation : Remplacer ou Fusionner -->
+          <div class="import-mode-container">
+            <label class="import-mode-option">
+              <input type="radio" name="import-mode" value="append" checked />
+              <div>
+                <strong>Ajouter au contrat existant</strong>
+                <span>Conserve les champs déjà présents et ajoute les nouvelles lignes à la suite</span>
+              </div>
+            </label>
+            <label class="import-mode-option">
+              <input type="radio" name="import-mode" value="replace" />
+              <div>
+                <strong>Remplacer tout le contrat</strong>
+                <span>Efface les champs actuels et importe uniquement les données de ce fichier</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Guide / Aide Mapping -->
+          <div class="import-mapping-header">
+            <div>
+              <h3 style="margin: 0; font-size: 0.95rem; font-weight: 600;">Mapping des colonnes</h3>
+              <p style="margin: 0; font-size: 0.78rem; color: var(--g-text-secondary); margin-top: 2px;">
+                Les colonnes reconnues automatiquement sont pré-sélectionnées. Ajustez si nécessaire.
+              </p>
+            </div>
+            <button class="g-btn-text" onclick="autoDetectMapping()" style="font-size: 0.78rem;">
+              🪄 Ré-exécuter la détection automatique
+            </button>
+          </div>
+
+          <!-- Tableau de mapping -->
+          <div class="import-mapping-table-wrapper">
+            <table class="import-mapping-table">
+              <thead>
+                <tr>
+                  <th style="width: 32%;">Champ cible (Contrat d'interface)</th>
+                  <th style="width: 38%;">Colonne source détectée dans votre fichier</th>
+                  <th style="width: 30%;">Exemple de données (1ère ligne)</th>
+                </tr>
+              </thead>
+              <tbody id="import-mapping-tbody">
+                <!-- Rendu dynamique des lignes de mapping -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Aperçu des données importées -->
+          <div class="import-preview-section">
+            <div style="font-size: 0.8rem; font-weight: 600; color: var(--g-text-secondary); margin-bottom: 0.4rem;">
+              Aperçu des 3 premières lignes après application du mapping :
+            </div>
+            <div class="import-preview-wrapper" id="import-preview-table-wrapper">
+              <!-- Tableau dynamique d'aperçu -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button class="g-btn-text" onclick="closeImportModal()">Annuler</button>
+        <button class="g-btn g-btn-primary" id="btn-confirm-import" onclick="confirmImportData()" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span id="btn-confirm-import-text">Importer les champs</span>
         </button>
       </div>
     </div>
