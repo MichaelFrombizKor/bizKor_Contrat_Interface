@@ -1581,71 +1581,96 @@ function showToast(message, type = "info") {
 }
 
 // ==============================================================================
-// GESTIONNAIRE D'IMPORTATION DE FICHIER & MAPPING ASSISTANT
+// GESTIONNAIRE D'IMPORTATION DE FICHIER & MAPPING ASSISTANT (BIZKOR MODÈLE)
 // ==============================================================================
 
-// Définition des champs cibles du contrat avec leurs synonymes et alias pour auto-détection intelligente
+// Définition des champs cibles du contrat d'interface bizKor
 const CONTRACT_TARGET_FIELDS = [
-  {
-    key: "champ",
-    label: "Nom du champ",
-    required: true,
-    description: "Nom d'usage ou libellé du champ source",
-    aliases: ["nom du champ", "champ", "field", "field name", "nom", "libelle", "libellé", "label", "source label", "column", "colonne"]
-  },
-  {
-    key: "objetOnglet",
-    label: "Objet / Table",
-    required: false,
-    description: "Objet ou entité Salesforce / ERP",
-    aliases: ["objet / table", "objet", "table", "object", "entity", "entite", "entité", "objet / onglet", "onglet"]
-  },
   {
     key: "sensFlux",
     label: "Sens du flux",
     required: false,
-    description: "Sens de l'échange de données",
+    section: "flux",
+    description: "Sens de l'échange (ex: Salesforce => ERP)",
     aliases: ["sens du flux", "sens", "flux", "direction", "flow", "sens flux", "sens de flux"]
   },
   {
-    key: "apiNameSource",
-    label: "API Name (source)",
-    required: false,
-    description: "Nom technique / API dans le système source",
-    aliases: ["api name (source)", "api name source", "api name", "apiname", "source api", "champ technique source", "source field"]
+    key: "champ",
+    label: "Nom du champ (Source)",
+    required: true,
+    section: "source",
+    description: "Libellé source (ex: Field Label, Nom du champ)",
+    aliases: ["fiel label", "field label", "nom du champ", "champ", "field", "field name", "nom", "libelle", "libellé", "label", "source label", "source field label"]
   },
   {
-    key: "dataTypeSource",
-    label: "Data Type (source)",
+    key: "apiNameSource",
+    label: "API Name (Source)",
     required: false,
-    description: "Type de données (Text, Number, Date, etc.)",
-    aliases: ["data type (source)", "data type source", "data type", "datatype", "type", "type de donnees", "type de données"]
+    section: "source",
+    description: "Nom technique / API source",
+    aliases: ["api name", "apiname", "api name (source)", "source api", "champ technique source", "source field"]
   },
   {
     key: "required",
-    label: "Required (Requis)",
+    label: "Required (Source)",
     required: false,
-    description: "Caractère obligatoire du champ",
-    aliases: ["required", "requis", "obligatoire", "mandatory", "is required"]
+    section: "source",
+    description: "Obligatoire côté source (True / False)",
+    aliases: ["required", "requis", "obligatoire", "mandatory", "is required", "source required"]
+  },
+  {
+    key: "dataTypeSource",
+    label: "Data Type (Source)",
+    required: false,
+    section: "source",
+    description: "Type de données source (Text, Picklist, Date...)",
+    aliases: ["data type", "datatype", "data type (source)", "type", "type de donnees", "type de données"]
+  },
+  {
+    key: "lengthSource",
+    label: "Length / Longueur (Source)",
+    required: false,
+    section: "source",
+    description: "Taille ou longueur du champ source",
+    aliases: ["lenght", "length", "longueur", "taille", "source length"]
   },
   {
     key: "values",
-    label: "Values (Picklist, Formula)",
+    label: "Values / Formules (Source)",
     required: false,
-    description: "Valeurs de picklist ou formules associées",
+    section: "source",
+    description: "Valeurs autorisées de picklist ou formules",
     aliases: ["values (picklist, formula)", "values", "valeurs", "picklist values", "valeurs autorisees", "valeurs autorisées", "liste"]
+  },
+  {
+    key: "commentairesSource",
+    label: "Commentaires (Source)",
+    required: false,
+    section: "source",
+    description: "Notes ou règles côté source",
+    aliases: ["commentaires", "commentaire", "comment", "comments", "notes", "remarques", "source comments"]
   },
   {
     key: "aInterfacer",
     label: "À interfacer",
     required: false,
-    description: "Inclusion dans le périmètre (Oui / Non)",
+    section: "synchro",
+    description: "Périmètre d'interface (Oui / Non)",
     aliases: ["a interfacer", "à interfacer", "interfacer", "a synchroniser", "à synchroniser", "synchroniser", "scope", "perimetre", "périmètre"]
+  },
+  {
+    key: "action",
+    label: "Action",
+    required: false,
+    section: "synchro",
+    description: "Action d'intégration / Mapping",
+    aliases: ["action", "action d'integration", "action d'intégration", "type action"]
   },
   {
     key: "synchro",
     label: "Synchro",
     required: false,
+    section: "synchro",
     description: "Mode de synchronisation (Création, Modification...)",
     aliases: ["synchro", "synchronisation", "sync", "mode synchro", "type synchro", "sync type"]
   },
@@ -1653,27 +1678,87 @@ const CONTRACT_TARGET_FIELDS = [
     key: "cibleExistante",
     label: "Cible existante",
     required: false,
-    description: "Champ existant, à créer ou à modifier",
+    section: "cible",
+    description: "Statut cible (Champ existant, à créer, à modifier)",
     aliases: ["cible existante", "cible", "statut cible", "action cible", "target status"]
   },
   {
     key: "fieldLabelCible",
-    label: "Field Label (cible)",
+    label: "Field Label (Cible)",
     required: false,
+    section: "cible",
     description: "Libellé côté système cible",
-    aliases: ["field label (cible)", "field label cible", "target label", "label cible", "libelle cible", "libellé cible"]
+    aliases: ["field label", "field label (cible)", "target label", "label cible", "libelle cible", "libellé cible", "fiel label cible"]
   },
   {
     key: "apiNameCible",
-    label: "API Name (cible)",
+    label: "API Name (Cible)",
     required: false,
+    section: "cible",
     description: "Nom technique / API côté système cible",
-    aliases: ["api name (cible)", "api name cible", "target api", "api cible", "champ technique cible", "nom technique cible"]
+    aliases: ["api name", "api name (cible)", "target api", "api cible", "champ technique cible", "nom technique cible"]
+  },
+  {
+    key: "dataTypeCible",
+    label: "Data Type (Cible)",
+    required: false,
+    section: "cible",
+    description: "Type de données côté système cible",
+    aliases: ["data type", "datatype", "data type (cible)", "type cible", "target data type"]
+  },
+  {
+    key: "lengthCible",
+    label: "Length / Longueur (Cible)",
+    required: false,
+    section: "cible",
+    description: "Longueur ou taille côté cible",
+    aliases: ["length", "lenght", "longueur cible", "target length"]
+  },
+  {
+    key: "fieldTypeCible",
+    label: "Field Type (Cible)",
+    required: false,
+    section: "cible",
+    description: "Type de champ cible",
+    aliases: ["field type", "type de champ", "type champ cible", "target field type"]
+  },
+  {
+    key: "requiredCible",
+    label: "Required (Cible)",
+    required: false,
+    section: "cible",
+    description: "Obligatoire côté cible",
+    aliases: ["required", "requis", "obligatoire", "target required"]
+  },
+  {
+    key: "valuesCible",
+    label: "Values (Cible)",
+    required: false,
+    section: "cible",
+    description: "Valeurs autorisées de picklist côté cible",
+    aliases: ["values (picklist, formula)", "values", "valeurs", "target values"]
+  },
+  {
+    key: "commentaires",
+    label: "Commentaires (Général / Cible)",
+    required: false,
+    section: "cible",
+    description: "Notes d'architecture, règles fonctionnelles",
+    aliases: ["commentaires", "commentaire", "comment", "comments", "notes", "remarques", "regles", "règles", "target comments"]
+  },
+  {
+    key: "objetOnglet",
+    label: "Objet / Table",
+    required: false,
+    section: "autre",
+    description: "Objet ou entité Salesforce / ERP",
+    aliases: ["objet / table", "objet", "table", "object", "entity", "entite", "entité", "objet / onglet", "onglet"]
   },
   {
     key: "fichierPlat",
     label: "Fichier à plat",
     required: false,
+    section: "autre",
     description: "Nom du fichier ou interface plate",
     aliases: ["fichier a plat", "fichier à plat", "flat file", "fichier plat", "fichier"]
   },
@@ -1681,6 +1766,7 @@ const CONTRACT_TARGET_FIELDS = [
     key: "frequenceDepot",
     label: "Fréquence des dépôts",
     required: false,
+    section: "autre",
     description: "Périodicité des transferts",
     aliases: ["frequence des depots", "fréquence des dépôts", "frequence", "fréquence", "periodicite", "périodicité", "frequency"]
   },
@@ -1688,6 +1774,7 @@ const CONTRACT_TARGET_FIELDS = [
     key: "operationsDml",
     label: "Opérations DML",
     required: false,
+    section: "autre",
     description: "Opération DML (Insert, Update, Upsert...)",
     aliases: ["operations dml", "opérations dml", "dml", "operation dml", "opération dml"]
   },
@@ -1695,6 +1782,7 @@ const CONTRACT_TARGET_FIELDS = [
     key: "cleIntegration",
     label: "Clé d'intégration",
     required: false,
+    section: "autre",
     description: "Identifiant unique externe ou clé de rapprochement",
     aliases: ["cle d'integration", "clé d'intégration", "cle integration", "clé intégration", "integration key", "external id", "cle"]
   },
@@ -1702,15 +1790,9 @@ const CONTRACT_TARGET_FIELDS = [
     key: "filtresDonnees",
     label: "Filtres des données",
     required: false,
+    section: "autre",
     description: "Conditions ou filtres appliqués à l'extraction",
     aliases: ["filtres des donnees", "filtres des données", "filtres", "filter", "filters", "conditions"]
-  },
-  {
-    key: "commentaires",
-    label: "Commentaires",
-    required: false,
-    description: "Notes d'architecture ou règles fonctionnelles",
-    aliases: ["commentaires", "commentaire", "comment", "comments", "notes", "remarques", "regles", "règles"]
   }
 ];
 
@@ -1721,8 +1803,8 @@ let currentImportState = {
   sheetNames: [],
   selectedSheet: "",
   rawRows: [],       // Données brutes [ [col0, col1, ...], ... ]
-  headers: [],       // Noms des colonnes du fichier
-  fieldMapping: {},  // { targetKey: sourceColumnName }
+  fileColumns: [],   // [ { index: 0, name: "Sens du flux", label: "Col 1: Sens du flux" }, ... ]
+  fieldMapping: {},  // { targetKey: columnIndex (int ou string) }
   dataStartIndex: 1  // Index de la 1ère ligne de données
 };
 
@@ -1751,7 +1833,7 @@ function resetImportFile() {
     sheetNames: [],
     selectedSheet: "",
     rawRows: [],
-    headers: [],
+    fileColumns: [],
     fieldMapping: {},
     dataStartIndex: 1
   };
@@ -1808,19 +1890,17 @@ function processUploadedFile(file) {
   showToast(`Lecture de ${file.name}...`, "info");
 
   const reader = new FileReader();
-
   const isCsv = file.name.toLowerCase().endsWith(".csv");
 
   reader.onload = function(e) {
     try {
       if (typeof XLSX === "undefined") {
-        showToast("Librairie de lecture XLSX non chargée. Veuillez actualiser la page.", "danger");
+        showToast("Librairie de lecture XLSX non disponible.", "danger");
         return;
       }
 
       let workbook;
       if (isCsv) {
-        // Détection encodage et lecture robuste du CSV
         const text = e.target.result;
         workbook = XLSX.read(text, { type: "string", raw: true });
       } else {
@@ -1836,7 +1916,6 @@ function processUploadedFile(file) {
         return;
       }
 
-      // Sélection par défaut : recherche d'une feuille nommée "Contrat" ou la 1ère / 2ème
       let defaultSheet = currentImportState.sheetNames[0];
       const foundContractSheet = currentImportState.sheetNames.find(name => 
         name.toLowerCase().includes("contrat") || name.toLowerCase().includes("interface") || name.toLowerCase().includes("mapping")
@@ -1844,13 +1923,11 @@ function processUploadedFile(file) {
       if (foundContractSheet) {
         defaultSheet = foundContractSheet;
       } else if (currentImportState.sheetNames.length > 1 && currentImportState.sheetNames[1]) {
-        // Dans nos exports multi-onglets bizKor, l'onglet 2 est "Contrat d'Interfaces"
         defaultSheet = currentImportState.sheetNames[1];
       }
 
       currentImportState.selectedSheet = defaultSheet;
 
-      // Configurer le sélecteur de feuille si plusieurs
       const sheetSelectorGroup = document.getElementById("import-sheet-selector-group");
       const sheetSelect = document.getElementById("import-sheet-select");
       if (currentImportState.sheetNames.length > 1) {
@@ -1889,7 +1966,6 @@ function loadSheetData(sheetName) {
   const sheet = currentImportState.workbook.Sheets[sheetName];
   if (!sheet) return;
 
-  // Convertir la feuille en tableau 2D de lignes brutes
   const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
   if (!rawData || rawData.length === 0) {
@@ -1897,15 +1973,14 @@ function loadSheetData(sheetName) {
     return;
   }
 
-  // Détecter la ligne d'en-tête (en sautant les lignes de métadonnées ou commentaires commençant par #)
+  // Détecter la ligne d'en-tête (en ignorant métadonnées #)
   let headerRowIndex = 0;
   for (let i = 0; i < Math.min(rawData.length, 15); i++) {
     const row = rawData[i];
     if (!Array.isArray(row) || row.length === 0) continue;
     const firstCell = String(row[0] || "").trim();
-    if (firstCell.startsWith("#")) continue; // Ligne de métadonnées de notre export CSV
+    if (firstCell.startsWith("#")) continue;
 
-    // Compter les cellules textuelles non vides
     const nonEmptyCells = row.filter(c => String(c).trim() !== "");
     if (nonEmptyCells.length >= 2) {
       headerRowIndex = i;
@@ -1914,9 +1989,18 @@ function loadSheetData(sheetName) {
   }
 
   const rawHeaders = (rawData[headerRowIndex] || []).map(h => String(h || "").trim());
-  const fileHeaders = rawHeaders.filter((h, idx) => h !== "" || idx < 30); // Éviter colonnes fantômes
+  
+  // Construction des colonnes du fichier avec leur index unique pour gérer les doublons (ex: 2x API Name, 2x Data Type, etc.)
+  const fileColumns = [];
+  rawHeaders.forEach((h, idx) => {
+    const colName = h || `Colonne ${idx + 1}`;
+    fileColumns.push({
+      index: idx,
+      name: colName,
+      label: `Col ${idx + 1}: ${colName}`
+    });
+  });
 
-  // Nettoyer les lignes de données en ignorant les lignes vides ou de commentaires
   const dataRows = [];
   for (let i = headerRowIndex + 1; i < rawData.length; i++) {
     const row = rawData[i];
@@ -1930,18 +2014,16 @@ function loadSheetData(sheetName) {
   }
 
   currentImportState.rawRows = dataRows;
-  currentImportState.headers = fileHeaders;
+  currentImportState.fileColumns = fileColumns;
   currentImportState.dataStartIndex = headerRowIndex + 1;
 
-  // Mise à jour de la bannière
   document.getElementById("import-file-name").textContent = currentImportState.fileName + (currentImportState.sheetNames.length > 1 ? ` (${sheetName})` : "");
-  document.getElementById("import-file-stats").textContent = `${fileHeaders.filter(Boolean).length} colonnes détectées • ${dataRows.length} lignes de données prêtes`;
+  document.getElementById("import-file-stats").textContent = `${fileColumns.length} colonnes détectées • ${dataRows.length} lignes de données prêtes`;
 
-  // Basculer l'affichage vers l'étape de mapping
   document.getElementById("import-step-upload").classList.add("hidden");
   document.getElementById("import-step-mapping").classList.remove("hidden");
 
-  // Détection automatique du mapping
+  // Détection automatique du mapping basée sur le modèle bizKor
   autoDetectMapping();
 
   document.getElementById("btn-confirm-import").disabled = (dataRows.length === 0);
@@ -1958,46 +2040,84 @@ function normalizeHeader(str) {
     .replace(/[^a-z0-9]/g, "");     // Garder uniquement caractères alphanumériques
 }
 
-// Détection intelligente du mapping
+// Détection intelligente du mapping bizKor
 function autoDetectMapping() {
   const mapping = {};
-  const fileHeaders = currentImportState.headers || [];
+  const fileCols = currentImportState.fileColumns || [];
+  const assignedColIndices = new Set();
+
+  // Détecter si le fichier suit la structure bizKor (ex: Cible existante à mi-chemin)
+  let cibleIndex = -1;
+  fileCols.forEach(col => {
+    const norm = normalizeHeader(col.name);
+    if (norm.includes("cibleexistante") || norm === "cible") {
+      cibleIndex = col.index;
+    }
+  });
 
   CONTRACT_TARGET_FIELDS.forEach(target => {
-    let matchedColumn = "";
+    let matchedCol = null;
 
-    // 1. Recherche par correspondance exacte ou normalisée sur les alias
-    for (const header of fileHeaders) {
-      if (!header) continue;
-      const normH = normalizeHeader(header);
+    // Plage d'indices privilégiée selon la section (Source vs Cible)
+    let candidateCols = fileCols;
+    if (cibleIndex !== -1) {
+      if (target.section === "source") {
+        candidateCols = fileCols.filter(c => c.index < cibleIndex);
+      } else if (target.section === "cible") {
+        candidateCols = fileCols.filter(c => c.index >= cibleIndex);
+      }
+    }
+
+    // 1. Recherche exacte sur les alias dans les colonnes candidates non encore assignées
+    for (const col of candidateCols) {
+      if (assignedColIndices.has(col.index)) continue;
+      const normH = normalizeHeader(col.name);
 
       for (const alias of target.aliases) {
         const normAlias = normalizeHeader(alias);
         if (normH === normAlias) {
-          matchedColumn = header;
+          matchedCol = col;
           break;
         }
       }
-      if (matchedColumn) break;
+      if (matchedCol) break;
     }
 
-    // 2. Si non trouvé, recherche par inclusion partielle forte
-    if (!matchedColumn) {
-      for (const header of fileHeaders) {
-        if (!header) continue;
-        const normH = normalizeHeader(header);
+    // 2. Si pas trouvé dans les candidates, recherche sur l'ensemble des colonnes non assignées
+    if (!matchedCol) {
+      for (const col of fileCols) {
+        if (assignedColIndices.has(col.index)) continue;
+        const normH = normalizeHeader(col.name);
+
+        for (const alias of target.aliases) {
+          const normAlias = normalizeHeader(alias);
+          if (normH === normAlias) {
+            matchedCol = col;
+            break;
+          }
+        }
+        if (matchedCol) break;
+      }
+    }
+
+    // 3. Recherche par inclusion partielle
+    if (!matchedCol) {
+      for (const col of candidateCols) {
+        if (assignedColIndices.has(col.index)) continue;
+        const normH = normalizeHeader(col.name);
         const normTarget = normalizeHeader(target.key);
         const normLabel = normalizeHeader(target.label);
 
         if (normH.includes(normTarget) || normH.includes(normLabel)) {
-          matchedColumn = header;
+          matchedCol = col;
           break;
         }
       }
     }
 
-    if (matchedColumn) {
-      mapping[target.key] = matchedColumn;
+    if (matchedCol) {
+      mapping[target.key] = matchedCol.index;
+      assignedColIndices.add(matchedCol.index);
     }
   });
 
@@ -2010,30 +2130,33 @@ function renderMappingTable() {
   const tbody = document.getElementById("import-mapping-tbody");
   if (!tbody) return;
 
-  const fileHeaders = currentImportState.headers || [];
+  const fileCols = currentImportState.fileColumns || [];
   const sampleRow = currentImportState.rawRows[0] || [];
 
   tbody.innerHTML = CONTRACT_TARGET_FIELDS.map(target => {
     const isRequired = target.required;
-    const selectedSource = currentImportState.fieldMapping[target.key] || "";
-    const isMapped = !!selectedSource;
+    const selectedColIdx = currentImportState.fieldMapping[target.key];
+    const isMapped = (selectedColIdx !== undefined && selectedColIdx !== null && selectedColIdx !== "");
 
-    // Exemple de données pour la colonne sélectionnée
     let sampleVal = "-";
-    if (selectedSource) {
-      const colIndex = fileHeaders.indexOf(selectedSource);
-      if (colIndex !== -1 && sampleRow[colIndex] !== undefined && sampleRow[colIndex] !== null) {
-        sampleVal = String(sampleRow[colIndex]);
+    if (isMapped) {
+      const idx = parseInt(selectedColIdx, 10);
+      if (sampleRow[idx] !== undefined && sampleRow[idx] !== null) {
+        sampleVal = String(sampleRow[idx]);
       }
     }
 
     const optionsHtml = [
       `<option value="">-- Ignorer ce champ --</option>`,
-      ...fileHeaders.filter(Boolean).map(h => {
-        const isSel = (h === selectedSource);
-        return `<option value="${escapeHtml(h)}" ${isSel ? 'selected' : ''}>${escapeHtml(h)}</option>`;
+      ...fileCols.map(c => {
+        const isSel = (isMapped && parseInt(selectedColIdx, 10) === c.index);
+        return `<option value="${c.index}" ${isSel ? 'selected' : ''}>${escapeHtml(c.label)}</option>`;
       })
     ].join("");
+
+    const sectionBadge = target.section === "source" 
+      ? '<span style="font-size:0.65rem; background:#E8F0FE; color:#1A73E8; padding:1px 5px; border-radius:4px; margin-left:4px;">Source</span>'
+      : (target.section === "cible" ? '<span style="font-size:0.65rem; background:#FCE8E6; color:#D93025; padding:1px 5px; border-radius:4px; margin-left:4px;">Cible</span>' : '');
 
     return `
       <tr>
@@ -2042,6 +2165,7 @@ function renderMappingTable() {
             <span class="import-target-name">
               ${escapeHtml(target.label)}
               ${isRequired ? '<span class="required-star" title="Champ obligatoire">*</span>' : ''}
+              ${sectionBadge}
             </span>
             <span class="import-target-key">${escapeHtml(target.description)}</span>
           </div>
@@ -2065,33 +2189,30 @@ function renderMappingTable() {
   }).join("");
 }
 
-function handleMappingChange(targetKey, sourceColumn) {
-  if (sourceColumn) {
-    currentImportState.fieldMapping[targetKey] = sourceColumn;
+function handleMappingChange(targetKey, selectedColIndex) {
+  if (selectedColIndex !== "" && selectedColIndex !== undefined && selectedColIndex !== null) {
+    currentImportState.fieldMapping[targetKey] = parseInt(selectedColIndex, 10);
   } else {
     delete currentImportState.fieldMapping[targetKey];
   }
 
-  // Mettre à jour l'exemple de données associé
   const samplePill = document.getElementById(`sample-preview-${targetKey}`);
   if (samplePill) {
     let sampleVal = "-";
-    if (sourceColumn) {
-      const fileHeaders = currentImportState.headers || [];
-      const colIndex = fileHeaders.indexOf(sourceColumn);
+    if (selectedColIndex !== "" && selectedColIndex !== undefined) {
+      const idx = parseInt(selectedColIndex, 10);
       const sampleRow = currentImportState.rawRows[0] || [];
-      if (colIndex !== -1 && sampleRow[colIndex] !== undefined && sampleRow[colIndex] !== null) {
-        sampleVal = String(sampleRow[colIndex]);
+      if (sampleRow[idx] !== undefined && sampleRow[idx] !== null) {
+        sampleVal = String(sampleRow[idx]);
       }
     }
     samplePill.textContent = sampleVal;
     samplePill.title = sampleVal;
   }
 
-  // Mettre à jour le style visuel du select
   const selectEl = document.querySelector(`.import-select-source[data-target="${targetKey}"]`);
   if (selectEl) {
-    selectEl.classList.toggle("mapped", !!sourceColumn);
+    selectEl.classList.toggle("mapped", selectedColIndex !== "");
   }
 
   renderImportPreview();
@@ -2101,11 +2222,8 @@ function renderImportPreview() {
   const container = document.getElementById("import-preview-table-wrapper");
   if (!container) return;
 
-  const fileHeaders = currentImportState.headers || [];
   const previewRows = (currentImportState.rawRows || []).slice(0, 3);
-
-  // Colonnes actuellement mappées
-  const mappedTargets = CONTRACT_TARGET_FIELDS.filter(t => currentImportState.fieldMapping[t.key]);
+  const mappedTargets = CONTRACT_TARGET_FIELDS.filter(t => currentImportState.fieldMapping[t.key] !== undefined);
 
   if (mappedTargets.length === 0) {
     container.innerHTML = `<div style="padding: 0.75rem; font-size: 0.78rem; color: var(--g-text-secondary); text-align: center;">Aucune colonne mappée pour le moment. Associez au moins le nom du champ ci-dessus.</div>`;
@@ -2116,11 +2234,9 @@ function renderImportPreview() {
   
   const trsHtml = previewRows.map(row => {
     const tds = mappedTargets.map(t => {
-      const sourceCol = currentImportState.fieldMapping[t.key];
-      const colIndex = fileHeaders.indexOf(sourceCol);
-      let val = (colIndex !== -1 && row[colIndex] !== undefined && row[colIndex] !== null) ? String(row[colIndex]) : "";
+      const colIdx = currentImportState.fieldMapping[t.key];
+      let val = (colIdx !== undefined && row[colIdx] !== undefined && row[colIdx] !== null) ? String(row[colIdx]) : "";
       
-      // Nettoyage / normalisation visuelle pour l'aperçu
       if (t.key === "aInterfacer") {
         val = (val.toLowerCase().includes("oui") || val === "1" || val.toLowerCase() === "true") ? "✅ Oui" : "❌ Non";
       }
@@ -2137,10 +2253,9 @@ function renderImportPreview() {
   `;
 }
 
-// Confirmation et ingestion des données mappées
+// Confirmation et ingestion des données mappées selon le modèle bizKor
 function confirmImportData() {
   const mapping = currentImportState.fieldMapping;
-  const fileHeaders = currentImportState.headers || [];
   const rawRows = currentImportState.rawRows || [];
 
   if (rawRows.length === 0) {
@@ -2148,21 +2263,13 @@ function confirmImportData() {
     return;
   }
 
-  // Vérifier qu'au moins le champ "champ" (Nom du champ) ou un API name est mappé
-  if (!mapping.champ && !mapping.apiNameSource) {
-    showToast("Veuillez associer au moins la colonne 'Nom du champ' ou 'API Name' pour importer vos données.", "warning");
+  if (mapping.champ === undefined && mapping.apiNameSource === undefined) {
+    showToast("Veuillez associer au moins la colonne 'Nom du champ (Source)' ou 'API Name (Source)' pour importer vos données.", "warning");
     return;
   }
 
   const mode = document.querySelector('input[name="import-mode"]:checked')?.value || "append";
 
-  // Créer un index rapide des positions de colonnes
-  const colIndexMap = {};
-  for (const [targetKey, sourceCol] of Object.entries(mapping)) {
-    colIndexMap[targetKey] = fileHeaders.indexOf(sourceCol);
-  }
-
-  // Déterminer l'ID de départ
   let nextId = 1;
   if (mode === "append" && contractItems.length > 0) {
     nextId = Math.max(...contractItems.map(i => i.id || 0)) + 1;
@@ -2179,8 +2286,8 @@ function confirmImportData() {
 
   rawRows.forEach(row => {
     const getVal = (key) => {
-      const idx = colIndexMap[key];
-      if (idx === undefined || idx === -1 || row[idx] === undefined || row[idx] === null) return "";
+      const idx = mapping[key];
+      if (idx === undefined || idx === null || row[idx] === undefined || row[idx] === null) return "";
       return String(row[idx]).trim();
     };
 
@@ -2191,7 +2298,6 @@ function confirmImportData() {
     }
 
     if (!champName) {
-      // Ignorer les lignes sans aucun nom de champ identifiable
       return;
     }
 
@@ -2215,6 +2321,23 @@ function confirmImportData() {
       }
     }
 
+    // Normalisation type de données / longueur
+    let dataTypeSourceVal = getVal("dataTypeSource");
+    const lengthSourceVal = getVal("lengthSource");
+    if (lengthSourceVal && dataTypeSourceVal && !dataTypeSourceVal.includes("(")) {
+      dataTypeSourceVal = `${dataTypeSourceVal}(${lengthSourceVal})`;
+    }
+
+    // Commentaires fusionnés
+    const commSource = getVal("commentairesSource");
+    const commCible = getVal("commentaires");
+    let fullCommentaires = "";
+    if (commSource && commCible && commSource !== commCible) {
+      fullCommentaires = `${commSource} | ${commCible}`;
+    } else {
+      fullCommentaires = commSource || commCible || "";
+    }
+
     const sensFluxVal = getVal("sensFlux");
     const objetVal = getVal("objetOnglet");
     const synchroVal = getVal("synchro");
@@ -2233,15 +2356,15 @@ function confirmImportData() {
       objetOnglet: objetVal,
       sensFlux: sensFluxVal,
       apiNameSource: apiSource,
-      dataTypeSource: getVal("dataTypeSource"),
+      dataTypeSource: dataTypeSourceVal,
       required: isRequired,
-      values: getVal("values"),
+      values: getVal("values") || getVal("valuesCible"),
       aInterfacer: aInterfacerVal,
       synchro: synchroVal,
       cibleExistante: cibleVal,
       fieldLabelCible: getVal("fieldLabelCible"),
       apiNameCible: getVal("apiNameCible"),
-      commentaires: getVal("commentaires"),
+      commentaires: fullCommentaires,
       fichierPlat: getVal("fichierPlat"),
       frequenceDepot: getVal("frequenceDepot"),
       operationsDml: dmlVal,
@@ -2255,7 +2378,7 @@ function confirmImportData() {
     return;
   }
 
-  // Enrichir les picklists administrées avec les nouvelles valeurs détectées
+  // Enrichir les picklists administrées
   const currentPicklists = getAdminPicklists();
   let picklistsUpdated = false;
 
