@@ -206,7 +206,7 @@ let adminActiveTab = "flux"; // 'flux', 'objet', 'synchro', 'cible'
 
 // Récupère les référentiels initiaux par défaut
 function getDefaultPicklists() {
-  const defaultObjets = Array.isArray(defaultContractData) 
+  const defaultObjets = (typeof defaultContractData !== "undefined" && Array.isArray(defaultContractData)) 
     ? [...new Set(defaultContractData.map(d => d.objetOnglet).filter(Boolean))].sort()
     : ["Comptes", "Contacts", "Devis / Commandes", "Projets"];
 
@@ -786,12 +786,6 @@ function setupEventListeners() {
   document.getElementById("stat-creer")?.addEventListener("click", () => {
     setFilterVal("filter-cible", "Champ à créer");
   });
-  document.getElementById("stat-sf-")?.addEventListener("click", () => {
-    setFilterVal("filter-flux", "Salesforce => ");
-  });
-  document.getElementById("stat--sf")?.addEventListener("click", () => {
-    setFilterVal("filter-flux", " => Salesforce");
-  });
 }
 
 function setFilterVal(elementId, val) {
@@ -884,16 +878,52 @@ function updateKPIs() {
   const oui = contractItems.filter(i => (i.aInterfacer || "").includes("Oui")).length;
   const non = contractItems.filter(i => (i.aInterfacer || "").includes("Non")).length;
   const aCreer = contractItems.filter(i => (i.cibleExistante || "").includes("créer")).length;
-  const sf = contractItems.filter(i => (i.sensFlux || "").includes("Salesforce => ")).length;
-  const Sf = contractItems.filter(i => (i.sensFlux || "").includes(" => Salesforce")).length;
 
-  document.getElementById("stat-val-total").textContent = total;
-  document.getElementById("stat-val-oui").textContent = oui;
-  document.getElementById("stat-val-non").textContent = non;
-  document.getElementById("stat-val-creer").textContent = aCreer;
-  document.getElementById("stat-val-sf").textContent = sf;
-  document.getElementById("stat-val-").textContent = Sf;
-  document.getElementById("total-count").textContent = total;
+  const statValTotal = document.getElementById("stat-val-total");
+  if (statValTotal) statValTotal.textContent = total;
+  const statValOui = document.getElementById("stat-val-oui");
+  if (statValOui) statValOui.textContent = oui;
+  const statValNon = document.getElementById("stat-val-non");
+  if (statValNon) statValNon.textContent = non;
+  const statValCreer = document.getElementById("stat-val-creer");
+  if (statValCreer) statValCreer.textContent = aCreer;
+  const totalCount = document.getElementById("total-count");
+  if (totalCount) totalCount.textContent = total;
+
+  // Cartes dynamiques générées à partir de la picklist "Sens du flux"
+  const container = document.getElementById("stat-flux-container");
+  if (container) {
+    const picklists = getAdminPicklists();
+    const fluxList = picklists.flux || [];
+    const colors = ["blue", "purple", "amber", "green"];
+
+    container.innerHTML = fluxList.map((fluxVal, idx) => {
+      const count = contractItems.filter(i => i.sensFlux === fluxVal).length;
+      const colorClass = colors[idx % colors.length];
+      const customColor = getValColor('flux', fluxVal);
+      const iconStyle = customColor ? `background: rgba(${parseInt(customColor.slice(1,3),16)}, ${parseInt(customColor.slice(3,5),16)}, ${parseInt(customColor.slice(5,7),16)}, 0.15); color: ${customColor};` : '';
+      const safeVal = escapeHtml(fluxVal);
+
+      return `
+        <div class="stat-card" data-flux="${safeVal}" title="Cliquez pour filtrer le flux ${safeVal}">
+          <div class="stat-icon stat-icon-${colorClass}" style="${iconStyle}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">${count}</span>
+            <span class="stat-label">${safeVal}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.querySelectorAll(".stat-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const flux = card.getAttribute("data-flux");
+        setFilterVal("filter-flux", flux);
+      });
+    });
+  }
 }
 
 function render() {
@@ -901,26 +931,26 @@ function render() {
   const items = getFilteredData();
   
   const countText = document.getElementById("filter-count-text");
-  countText.textContent = `Affichage de ${items.length} sur ${contractItems.length} règles de mapping`;
+  if (countText) countText.textContent = `Affichage de ${items.length} sur ${contractItems.length} règles de mapping`;
 
   const emptyState = document.getElementById("empty-state");
   const tableView = document.getElementById("table-view");
   const cardsView = document.getElementById("cards-view");
 
   if (items.length === 0) {
-    emptyState.classList.remove("hidden");
-    tableView.classList.add("hidden");
-    cardsView.classList.add("hidden");
+    if (emptyState) emptyState.classList.remove("hidden");
+    if (tableView) tableView.classList.add("hidden");
+    if (cardsView) cardsView.classList.add("hidden");
     return;
   } else {
-    emptyState.classList.add("hidden");
+    if (emptyState) emptyState.classList.add("hidden");
     if (currentView === "table") {
-      tableView.classList.remove("hidden");
-      cardsView.classList.add("hidden");
+      if (tableView) tableView.classList.remove("hidden");
+      if (cardsView) cardsView.classList.add("hidden");
       renderTable(items);
     } else {
-      cardsView.classList.remove("hidden");
-      tableView.classList.add("hidden");
+      if (cardsView) cardsView.classList.remove("hidden");
+      if (tableView) tableView.classList.add("hidden");
       renderCards(items);
     }
   }
@@ -931,16 +961,7 @@ function renderTable(items) {
   
   tbody.innerHTML = items.map(item => {
     const isOui = (item.aInterfacer || "").includes("Oui");
-    const isSf = (item.sensFlux || "").includes("Salesforce => ");
-    const isSf = (item.sensFlux || "").includes(" => Salesforce");
-
-    let fluxBadgeClass = "badge-flux-autre";
-    if (isSf) fluxBadgeClass = "badge-flux-sf-";
-    else if (isSf) fluxBadgeClass = "badge-flux--sf";
-
-    let fluxDisplay = item.sensFlux || "";
-    if (fluxDisplay === "Salesforce => ") fluxDisplay = "Salesforce ➔ ";
-    else if (fluxDisplay === " => Salesforce") fluxDisplay = " ➔ Salesforce";
+    const fluxVal = item.sensFlux || "";
     
     let cibleBadgeClass = "badge-existant";
     if ((item.cibleExistante || "").includes("créer")) cibleBadgeClass = "badge-creer";
@@ -961,7 +982,7 @@ function renderTable(items) {
         <td class="col-flux">
           ${item.sensFlux ? (()=>{
             const _cs = badgeColorStyle('flux', item.sensFlux);
-            return `<span class="badge ${_cs ? '' : fluxBadgeClass}" style="${_cs}">${escapeHtml(fluxDisplay)}</span>`;
+            return `<span class="badge ${_cs ? '' : 'badge-flux-autre'}" style="${_cs}">${escapeHtml(item.sensFlux)}</span>`;
           })() : '<span style="color: var(--g-text-muted);">-</span>'}
         </td>
         <td class="col-objet">
@@ -1011,16 +1032,6 @@ function renderCards(items) {
 
   container.innerHTML = items.map(item => {
     const isOui = (item.aInterfacer || "").includes("Oui");
-    const isSf = (item.sensFlux || "").includes("Salesforce => ");
-    const isSf = (item.sensFlux || "").includes(" => Salesforce");
-
-    let fluxBadgeClass = "badge-flux-autre";
-    if (isSf) fluxBadgeClass = "badge-flux-sf-";
-    else if (isSf) fluxBadgeClass = "badge-flux--sf";
-
-    let fluxDisplay = item.sensFlux || "";
-    if (fluxDisplay === "Salesforce => ") fluxDisplay = "SF ➔ ";
-    else if (fluxDisplay === " => Salesforce") fluxDisplay = " ➔ SF";
 
     return `
       <div class="contract-card">
@@ -1037,11 +1048,10 @@ function renderCards(items) {
         </div>
 
         <div class="card-tags">
-          ${item.sensFlux ? `
-            <span class="badge ${fluxBadgeClass}">
-              ${escapeHtml(fluxDisplay)}
-            </span>
-          ` : ''}
+          ${item.sensFlux ? (()=>{
+            const _cs = badgeColorStyle('flux', item.sensFlux);
+            return `<span class="badge ${_cs ? '' : 'badge-flux-autre'}" style="${_cs}">${escapeHtml(item.sensFlux)}</span>`;
+          })() : ''}
           ${item.cibleExistante ? `<span class="badge badge-existant">${escapeHtml(item.cibleExistante)}</span>` : ''}
           ${item.dataTypeSource ? `<span class="badge badge-object">${escapeHtml(item.dataTypeSource)}</span>` : ''}
           ${item.required ? `<span class="badge badge-modifier">Requis</span>` : ''}
